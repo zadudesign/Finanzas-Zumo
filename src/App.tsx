@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/Transactions';
 import { Budgets } from './components/Budgets';
+import { Settings } from './components/Settings';
 import { Auth } from './components/Auth';
 import { supabase } from './lib/supabase';
 
