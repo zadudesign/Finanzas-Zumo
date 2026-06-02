@@ -36,6 +36,7 @@ function Layout() {
           {currentTab === 'dashboard' && <Dashboard />}
           {currentTab === 'transactions' && <Transactions />}
           {currentTab === 'budgets' && <Budgets />}
+          {currentTab === 'settings' && <Settings />}
         </div>
       </main>
     </div>

@@ -67,8 +67,16 @@ export function Sidebar({ currentTab, setCurrentTab, onShowAuth }: SidebarProps 
       </nav>
 
       <div className="p-4 border-t border-white/10 bg-white/5 space-y-2">
-        <button className="flex items-center w-full px-4 py-3 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
-          <Settings className="w-5 h-5 mr-3 opacity-70" />
+        <button 
+          onClick={() => setCurrentTab('settings')}
+          className={cn(
+            "flex items-center w-full px-4 py-3 rounded-xl text-sm transition-all duration-200 cursor-pointer",
+            currentTab === 'settings' 
+              ? "bg-white/10 text-white border border-white/10 shadow-sm" 
+              : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+          )}
+        >
+          <Settings className={cn("w-5 h-5 mr-3 transition-opacity", currentTab === 'settings' ? "opacity-100" : "opacity-70")} />
           Configuración
         </button>
         {session ? (
