@@ -1,0 +1,8 @@
+{
+  "name": "Family Finance Hub",
+  "description": "Plataforma de gestiÃ³n de finanzas familiares con presupuestos, alertas y grÃ¡ficos de ahorro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
