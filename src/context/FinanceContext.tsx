@@ -31,7 +31,15 @@ const mockInitialData: FinanceData = {
 export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [data, setData] = useState<FinanceData>(() => {
     const saved = localStorage.getItem('finance_data');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Aseguramos que existan las categorías si cargamos datos de una versión previa
+      return {
+        ...mockInitialData,
+        ...parsed,
+        categories: parsed.categories || DEFAULT_CATEGORIES
+      };
+    }
     return mockInitialData;
   });
   const [isLoading, setIsLoading] = useState(true);
