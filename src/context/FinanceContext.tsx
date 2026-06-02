@@ -50,38 +50,38 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
 
   const loadData = async () => {
     setIsLoading(true);
-    if (!hasSupabaseConfig) {
-      setIsLoading(false);
-      return;
+    
+    // 1. Cargar desde LocalStorage primero para velocidad instantánea
+    const saved = localStorage.getItem('finance_data');
+    if (saved) {
+      setData(JSON.parse(saved));
     }
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setIsLoading(false);
-        return;
+    // 2. Si Supabase está configurado, intentar traer datos frescos
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const [{ data: txs, error: txError }, { data: bgts, error: bgtError }] = await Promise.all([
+            supabase.from('transactions').select('*').order('date', { ascending: false }),
+            supabase.from('budgets').select('*')
+          ]);
+
+          if (!txError && !bgtError && txs && bgts) {
+            const cloudData = {
+              transactions: txs as Transaction[],
+              budgets: bgts as Budget[],
+              categories: data.categories // Mantenemos categorías locales o podrías crear table
+            };
+            setData(prev => ({ ...prev, ...cloudData }));
+            localStorage.setItem('finance_data', JSON.stringify(cloudData));
+          }
+        }
+      } catch (error) {
+        console.warn('Sync failed, using offline data:', error);
       }
-
-      const [{ data: txs, error: txError }, { data: bgts, error: bgtError }] = await Promise.all([
-        supabase.from('transactions').select('*').order('date', { ascending: false }),
-        supabase.from('budgets').select('*')
-      ]);
-
-      if (txError) throw txError;
-      if (bgtError) throw bgtError;
-
-      if (txs && bgts) {
-        setData(prev => ({
-          ...prev,
-          transactions: txs as Transaction[],
-          budgets: bgts as Budget[]
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching from Supabase:', error);
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -90,16 +90,23 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
 
   const addTransaction = async (t: Omit<Transaction, 'id'>) => {
     const newTransaction = { ...t, id: crypto.randomUUID() };
+    
+    // Actualización optimista local
     setData(prev => ({ ...prev, transactions: [newTransaction, ...prev.transactions] }));
 
     if (hasSupabaseConfig) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        try {
-          await supabase.from('transactions').insert([{ ...t, id: newTransaction.id }]);
-        } catch (error) {
-          console.error('Error Syncing to Supabase:', error);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Intentamos insertar con el ID ya generado para mantener consistencia
+          const { error } = await supabase
+            .from('transactions')
+            .insert([{ ...t, id: newTransaction.id, user_id: session.user.id }]);
+          
+          if (error) throw error;
         }
+      } catch (error) {
+        console.error('Supabase Sync Error:', error);
       }
     }
   };
@@ -133,13 +140,13 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     });
 
     if (hasSupabaseConfig) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        try {
-          await supabase.from('budgets').upsert(newB, { onConflict: 'user_id,category,month' });
-        } catch (error) {
-          console.error('Error Syncing budget to Supabase:', error);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.from('budgets').upsert({ ...newB, user_id: session.user.id }, { onConflict: 'user_id,category,month' });
         }
+      } catch (error) {
+        console.error('Error Syncing budget to Supabase:', error);
       }
     }
   };
