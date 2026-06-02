@@ -4,6 +4,8 @@ import { TransactionType } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
 
+import { LucideIcon } from './Settings';
+
 export function Transactions() {
   const { data, addTransaction, deleteTransaction } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
@@ -11,7 +13,7 @@ export function Transactions() {
   // Form state
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState(data.categories.expense[0] || '');
+  const [category, setCategory] = useState(data.categories.expense[0]?.name || '');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -54,7 +56,7 @@ export function Transactions() {
               onChange={(e) => {
                 const t = e.target.value as TransactionType;
                 setType(t);
-                setCategory(data.categories[t][0] || '');
+                setCategory(data.categories[t][0]?.name || '');
               }}
               className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
             >
@@ -77,17 +79,17 @@ export function Transactions() {
 
           <div className="space-y-2 lg:col-span-1">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Categoría</label>
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
-              required
-            >
-              <option value="" disabled className="bg-slate-800">Seleccionar...</option>
-              {data.categories[type].map(cat => (
-                <option key={cat} value={cat} className="bg-slate-800">{cat}</option>
-              ))}
-            </select>
+              <select 
+                value={category} 
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
+                required
+              >
+                <option value="" disabled className="bg-slate-800">Seleccionar...</option>
+                {data.categories[type].map(cat => (
+                  <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
+                ))}
+              </select>
           </div>
 
           <div className="space-y-2 lg:col-span-1">
@@ -144,7 +146,15 @@ export function Transactions() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200 font-medium">{t.description || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/5 text-slate-300">
-                    {t.category}
+                    {(() => {
+                      const catObj = [...data.categories.income, ...data.categories.expense].find(c => c.name === t.category);
+                      return (
+                        <>
+                          {catObj && <LucideIcon name={catObj.icon} className="w-3 h-3 mr-2" />}
+                          {t.category}
+                        </>
+                      );
+                    })()}
                   </span>
                 </td>
                 <td className={cn(

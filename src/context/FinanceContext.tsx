@@ -9,7 +9,7 @@ interface FinanceContextType {
   addTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   setBudget: (b: Omit<Budget, 'id'>) => Promise<void>;
-  addCategory: (type: 'income' | 'expense', name: string) => void;
+  addCategory: (type: 'income' | 'expense', category: Category) => void;
   deleteCategory: (type: 'income' | 'expense', name: string) => void;
 }
 
@@ -33,11 +33,20 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     const saved = localStorage.getItem('finance_data');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Aseguramos que existan las categorías si cargamos datos de una versión previa
+      
+      // Migración: Si las categorías son strings, las convertimos al nuevo formato
+      let migratedCategories = parsed.categories;
+      if (migratedCategories && Array.isArray(migratedCategories.expense) && typeof migratedCategories.expense[0] === 'string') {
+        migratedCategories = {
+          income: migratedCategories.income.map((name: string) => ({ name, icon: 'PlusCircle' })),
+          expense: migratedCategories.expense.map((name: string) => ({ name, icon: 'Tag' }))
+        };
+      }
+
       return {
         ...mockInitialData,
         ...parsed,
-        categories: parsed.categories || DEFAULT_CATEGORIES
+        categories: migratedCategories || DEFAULT_CATEGORIES
       };
     }
     return mockInitialData;
@@ -151,14 +160,14 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   };
 
-  const addCategory = (type: 'income' | 'expense', name: string) => {
+  const addCategory = (type: 'income' | 'expense', category: Category) => {
     setData(prev => {
-      if (prev.categories[type].includes(name)) return prev;
+      if (prev.categories[type].some(c => c.name === category.name)) return prev;
       return {
         ...prev,
         categories: {
           ...prev.categories,
-          [type]: [...prev.categories[type], name]
+          [type]: [...prev.categories[type], category]
         }
       };
     });
@@ -169,7 +178,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       ...prev,
       categories: {
         ...prev.categories,
-        [type]: prev.categories[type].filter(c => c !== name)
+        [type]: prev.categories[type].filter(c => c.name !== name)
       }
     }));
   };

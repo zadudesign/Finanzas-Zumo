@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
-import { Target, Plus, Trash2, Tag } from 'lucide-react';
+import { Target, Plus, Trash2, Tag, HelpCircle } from 'lucide-react';
+import { LucideIcon } from './Settings';
 
 export function Budgets() {
   const { data, setBudget, addCategory, deleteCategory } = useFinance();
   const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
   
-  const [category, setCategory] = useState(data.categories.expense[0] || '');
+  const [category, setCategory] = useState(data.categories.expense[0]?.name || '');
   const [amount, setAmount] = useState('');
   const [newCatName, setNewCatName] = useState('');
 
@@ -40,7 +41,7 @@ export function Budgets() {
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
-    addCategory('expense', newCatName.trim());
+    addCategory('expense', { name: newCatName.trim(), icon: 'Tag' });
     setNewCatName('');
   };
 
@@ -72,7 +73,7 @@ export function Budgets() {
               >
                 <option value="" disabled className="bg-slate-800">Seleccionar...</option>
                 {data.categories.expense.map(cat => (
-                  <option key={cat} value={cat} className="bg-slate-800">{cat}</option>
+                  <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
                 ))}
               </select>
             </div>
@@ -118,10 +119,15 @@ export function Budgets() {
 
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
               {data.categories.expense.map(cat => (
-                <div key={cat} className="flex justify-between items-center bg-black/20 px-3 py-2 rounded-xl border border-white/5">
-                  <span className="text-sm text-slate-300">{cat}</span>
+                <div key={cat.name} className="flex justify-between items-center bg-black/20 px-3 py-2 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                      <LucideIcon name={cat.icon} className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm text-slate-300">{cat.name}</span>
+                  </div>
                   <button 
-                    onClick={() => deleteCategory('expense', cat)}
+                    onClick={() => deleteCategory('expense', cat.name)}
                     className="text-slate-500 hover:text-rose-400 p-1"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -153,12 +159,17 @@ export function Budgets() {
                 <div key={bp.id} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-6 flex flex-col gap-5 transition-all hover:bg-white/10 group">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center">
-                      <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center mr-3 transition-colors",
-                        bp.percentage >= 90 ? "bg-rose-500/20 text-rose-400" : bp.percentage >= 75 ? "bg-orange-500/20 text-orange-400" : "bg-cyan-500/20 text-cyan-400"
-                      )}>
-                        <Tag className="w-5 h-5" />
-                      </div>
+                      {(() => {
+                        const catObj = data.categories.expense.find(c => c.name === bp.category);
+                        return (
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center mr-3 transition-colors",
+                            bp.percentage >= 90 ? "bg-rose-500/20 text-rose-400" : bp.percentage >= 75 ? "bg-orange-500/20 text-orange-400" : "bg-cyan-500/20 text-cyan-400"
+                          )}>
+                            <LucideIcon name={catObj?.icon || 'Tag'} className="w-5 h-5" />
+                          </div>
+                        );
+                      })()}
                       <div>
                         <h4 className="font-bold text-white text-lg">{bp.category}</h4>
                         <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Consumido</p>

@@ -4,6 +4,8 @@ import { formatCurrency, cn } from '../lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { AlertCircle, ArrowDownRight, ArrowUpRight, DollarSign } from 'lucide-react';
 
+import { LucideIcon } from './Settings';
+
 export function Dashboard() {
   const { data } = useFinance();
 
@@ -104,15 +106,21 @@ export function Dashboard() {
             Alertas de Presupuesto
           </h3>
           <div className="space-y-3 pl-11">
-            {alerts.map((alert, i) => (
-              <div key={i} className="flex justify-between items-center text-sm bg-black/20 p-3 rounded-xl border border-white/5">
-                <span className="text-rose-100 font-medium">{alert.category}</span>
-                <span className="text-rose-200 opacity-80 font-mono">
-                  {formatCurrency(alert.spent)} / {formatCurrency(alert.budget)}
-                  <span className="ml-2 font-bold text-rose-400">({alert.percentage.toFixed(0)}%)</span>
-                </span>
-              </div>
-            ))}
+            {alerts.map((alert, i) => {
+              const catObj = data.categories.expense.find(c => c.name === alert.category);
+              return (
+                <div key={i} className="flex justify-between items-center text-sm bg-black/20 p-3 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-3">
+                    {catObj && <LucideIcon name={catObj.icon} className="w-4 h-4 text-rose-400" />}
+                    <span className="text-rose-100 font-medium">{alert.category}</span>
+                  </div>
+                  <span className="text-rose-200 opacity-80 font-mono">
+                    {formatCurrency(alert.spent)} / {formatCurrency(alert.budget)}
+                    <span className="ml-2 font-bold text-rose-400">({alert.percentage.toFixed(0)}%)</span>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

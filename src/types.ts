@@ -16,16 +16,34 @@ export interface Budget {
   month: string; // YYYY-MM
 }
 
+export interface Category {
+  name: string;
+  icon: string;
+}
+
 export interface FinanceData {
   transactions: Transaction[];
   budgets: Budget[];
   categories: {
-    income: string[];
-    expense: string[];
+    income: Category[];
+    expense: Category[];
   };
 }
 
-export const DEFAULT_CATEGORIES = {
-  income: ['Salario', 'Inversiones', 'Ventas', 'Otros'],
-  expense: ['Vivienda', 'Alimentación', 'Transporte', 'Salud', 'Entretenimiento', 'Educación', 'Otros']
+export const DEFAULT_CATEGORIES: FinanceData['categories'] = {
+  income: [
+    { name: 'Salario', icon: 'Wallet' },
+    { name: 'Inversiones', icon: 'TrendingUp' },
+    { name: 'Ventas', icon: 'ShoppingBag' },
+    { name: 'Otros', icon: 'PlusCircle' }
+  ],
+  expense: [
+    { name: 'Vivienda', icon: 'Home' },
+    { name: 'Alimentación', icon: 'Utensils' },
+    { name: 'Transporte', icon: 'Car' },
+    { name: 'Salud', icon: 'Activity' },
+    { name: 'Entretenimiento', icon: 'Play' },
+    { name: 'Educación', icon: 'Book' },
+    { name: 'Otros', icon: 'CreditCard' }
+  ]
 };
