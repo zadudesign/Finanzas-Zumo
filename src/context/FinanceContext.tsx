@@ -9,8 +9,8 @@ interface FinanceContextType {
   addTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   setBudget: (b: Omit<Budget, 'id'>) => Promise<void>;
-  addCategory: (type: 'income' | 'expense', category: Category) => void;
-  deleteCategory: (type: 'income' | 'expense', name: string) => void;
+  addCategory: (type: 'income' | 'expense', category: Category) => Promise<void>;
+  deleteCategory: (type: 'income' | 'expense', name: string) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -71,16 +71,26 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          const [{ data: txs, error: txError }, { data: bgts, error: bgtError }] = await Promise.all([
+          const [{ data: txs, error: txError }, { data: bgts, error: bgtError }, { data: cats, error: catError }] = await Promise.all([
             supabase.from('transactions').select('*').order('date', { ascending: false }),
-            supabase.from('budgets').select('*')
+            supabase.from('budgets').select('*'),
+            supabase.from('categories').select('*')
           ]);
 
           if (!txError && !bgtError && txs && bgts) {
+            let cloudCategories = data.categories; 
+            
+            if (!catError && cats && cats.length > 0) {
+               cloudCategories = {
+                 income: cats.filter(c => c.type === 'income').map(c => ({ name: c.name, icon: c.icon })),
+                 expense: cats.filter(c => c.type === 'expense').map(c => ({ name: c.name, icon: c.icon }))
+               };
+            }
+
             const cloudData = {
               transactions: txs as Transaction[],
               budgets: bgts as Budget[],
-              categories: data.categories // Mantenemos categorías locales o podrías crear table
+              categories: cloudCategories
             };
             setData(prev => ({ ...prev, ...cloudData }));
             localStorage.setItem('finance_data', JSON.stringify(cloudData));
@@ -160,7 +170,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   };
 
-  const addCategory = (type: 'income' | 'expense', category: Category) => {
+  const addCategory = async (type: 'income' | 'expense', category: Category) => {
     setData(prev => {
       if (prev.categories[type].some(c => c.name === category.name)) return prev;
       return {
@@ -171,9 +181,23 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
         }
       };
     });
+
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.from('categories').upsert(
+            { user_id: session.user.id, name: category.name, type, icon: category.icon },
+            { onConflict: 'user_id,type,name' }
+          );
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (add category):', error);
+      }
+    }
   };
 
-  const deleteCategory = (type: 'income' | 'expense', name: string) => {
+  const deleteCategory = async (type: 'income' | 'expense', name: string) => {
     setData(prev => ({
       ...prev,
       categories: {
@@ -181,6 +205,20 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
         [type]: prev.categories[type].filter(c => c.name !== name)
       }
     }));
+
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.from('categories').delete()
+            .eq('user_id', session.user.id)
+            .eq('type', type)
+            .eq('name', name);
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (delete category):', error);
+      }
+    }
   };
 
   return (
