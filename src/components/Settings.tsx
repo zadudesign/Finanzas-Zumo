@@ -35,7 +35,9 @@ export function Settings() {
   const [showIconPicker, setShowIconPicker] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    if (hasSupabaseConfig) {
+      supabase.auth.getSession().then(({ data: { session } }) => setSession(session)).catch(console.error);
+    }
   }, []);
 
   const handleAddCategory = (e: React.FormEvent) => {

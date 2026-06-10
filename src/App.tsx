@@ -6,7 +6,7 @@ import { Transactions } from './components/Transactions';
 import { Budgets } from './components/Budgets';
 import { Settings } from './components/Settings';
 import { Auth } from './components/Auth';
-import { supabase } from './lib/supabase';
+import { supabase, hasSupabaseConfig } from './lib/supabase';
 
 function Layout() {
   const [currentTab, setCurrentTab] = useState('dashboard');
@@ -14,9 +14,11 @@ function Layout() {
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-    return () => subscription.unsubscribe();
+    if (hasSupabaseConfig) {
+      supabase.auth.getSession().then(({ data: { session } }) => setSession(session)).catch(console.error);
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+      return () => subscription.unsubscribe();
+    }
   }, []);
 
   // Si no hay sesión y el usuario hace clic en "Vincular", mostramos el Auth

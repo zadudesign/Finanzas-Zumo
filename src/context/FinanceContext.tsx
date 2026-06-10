@@ -77,19 +77,31 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
             supabase.from('categories').select('*')
           ]);
 
-          if (!txError && !bgtError && txs && bgts) {
+          if (!txError && txs) {
             let cloudCategories = data.categories; 
+            let cloudBudgets = !bgtError && bgts ? (bgts as Budget[]) : data.budgets;
             
             if (!catError && cats && cats.length > 0) {
                cloudCategories = {
                  income: cats.filter(c => c.type === 'income').map(c => ({ name: c.name, icon: c.icon })),
                  expense: cats.filter(c => c.type === 'expense').map(c => ({ name: c.name, icon: c.icon }))
                };
+               
+               // Buscar meta de presupuesto (amount) dentro de las categorías
+               const catsWithBudgets = cats.filter(c => c.type === 'expense' && c.amount != null);
+               if (catsWithBudgets.length > 0) {
+                 cloudBudgets = catsWithBudgets.map(c => ({
+                   id: c.id || crypto.randomUUID(),
+                   category: c.name,
+                   amount: c.amount,
+                   month: c.month || new Date().toISOString().substring(0, 7)
+                 }));
+               }
             }
 
             const cloudData = {
               transactions: txs as Transaction[],
-              budgets: bgts as Budget[],
+              budgets: cloudBudgets,
               categories: cloudCategories
             };
             setData(prev => ({ ...prev, ...cloudData }));
@@ -162,7 +174,12 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          await supabase.from('budgets').upsert({ ...newB, user_id: session.user.id }, { onConflict: 'user_id,category,month' });
+          // Actualizamos la categoría correspondiente con el monto del presupuesto
+          await supabase.from('categories')
+            .update({ amount: newB.amount, month: newB.month })
+            .eq('user_id', session.user.id)
+            .eq('name', newB.category)
+            .eq('type', 'expense');
         }
       } catch (error) {
         console.error('Error Syncing budget to Supabase:', error);
