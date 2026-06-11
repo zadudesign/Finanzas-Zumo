@@ -1,16 +1,26 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
 import { Target, Plus, Trash2, Tag, HelpCircle } from 'lucide-react';
 import { LucideIcon } from './Settings';
+import { supabase, hasSupabaseConfig } from '../lib/supabase';
 
 export function Budgets() {
   const { data, setBudget, addCategory, deleteCategory } = useFinance();
   const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+  const [session, setSession] = useState<any>(null);
   
   const [category, setCategory] = useState(data.categories.expense[0]?.name || '');
   const [amount, setAmount] = useState('');
   const [newCatName, setNewCatName] = useState('');
+
+  useEffect(() => {
+    if (hasSupabaseConfig) {
+      supabase.auth.getSession().then(({ data: { session } }) => setSession(session)).catch(console.error);
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+      return () => subscription.unsubscribe();
+    }
+  }, []);
 
   // Transform data to calculate spending per budget
   const budgetProgress = useMemo(() => {
@@ -53,93 +63,95 @@ export function Budgets() {
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Configuration */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Formulario de Presupuesto */}
-          <form onSubmit={handleSubmitBudget} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 space-y-6">
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2 flex items-center">
-                <Target className="w-5 h-5 mr-2 text-indigo-400" /> Asignar Presupuesto
-              </h3>
-              <p className="text-xs text-slate-400 opacity-80">Define límites mensuales por categoría.</p>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Categoría</label>
-              <select 
-                value={category} 
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
-                required
-              >
-                <option value="" disabled className="bg-slate-800">Seleccionar...</option>
-                {data.categories.expense.map(cat => (
-                  <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Límite Mensual (COP)</label>
-              <input 
-                type="number" 
-                required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors placeholder-slate-600"
-              />
-            </div>
+        {session && (
+          <div className="lg:col-span-4 space-y-6">
+            {/* Formulario de Presupuesto */}
+            <form onSubmit={handleSubmitBudget} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 space-y-6">
+              <div>
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center">
+                  <Target className="w-5 h-5 mr-2 text-indigo-400" /> Asignar Presupuesto
+                </h3>
+                <p className="text-xs text-slate-400 opacity-80">Define límites mensuales por categoría.</p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Categoría</label>
+                <select 
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
+                  required
+                >
+                  <option value="" disabled className="bg-slate-800">Seleccionar...</option>
+                  {data.categories.expense.map(cat => (
+                    <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Límite Mensual (COP)</label>
+                <input 
+                  type="number" 
+                  required
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors placeholder-slate-600"
+                />
+              </div>
 
-            <button type="submit" className="w-full py-3 bg-indigo-500 text-white rounded-xl text-sm font-bold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
-              Guardar Límite
-            </button>
-          </form>
-
-          {/* Gestión de Categorías */}
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 space-y-6">
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2 flex items-center">
-                <Tag className="w-5 h-5 mr-2 text-cyan-400" /> Categorías
-              </h3>
-              <p className="text-xs text-slate-400 opacity-80">Administra tus tipos de gastos.</p>
-            </div>
-
-            <form onSubmit={handleAddCategory} className="flex gap-2">
-              <input 
-                type="text"
-                placeholder="Nueva Categoría"
-                value={newCatName}
-                onChange={(e) => setNewCatName(e.target.value)}
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <button type="submit" className="p-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors">
-                <Plus className="w-5 h-5" />
+              <button type="submit" className="w-full py-3 bg-indigo-500 text-white rounded-xl text-sm font-bold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
+                Guardar Límite
               </button>
             </form>
 
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-              {data.categories.expense.map(cat => (
-                <div key={cat.name} className="flex justify-between items-center bg-black/20 px-3 py-2 rounded-xl border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                      <LucideIcon name={cat.icon} className="w-4 h-4" />
+            {/* Gestión de Categorías */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 space-y-6">
+              <div>
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center">
+                  <Tag className="w-5 h-5 mr-2 text-cyan-400" /> Categorías
+                </h3>
+                <p className="text-xs text-slate-400 opacity-80">Administra tus tipos de gastos.</p>
+              </div>
+
+              <form onSubmit={handleAddCategory} className="flex gap-2">
+                <input 
+                  type="text"
+                  placeholder="Nueva Categoría"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  className="flex-1 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <button type="submit" className="p-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors">
+                  <Plus className="w-5 h-5" />
+                </button>
+              </form>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                {data.categories.expense.map(cat => (
+                  <div key={cat.name} className="flex justify-between items-center bg-black/20 px-3 py-2 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                        <LucideIcon name={cat.icon} className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm text-slate-300">{cat.name}</span>
                     </div>
-                    <span className="text-sm text-slate-300">{cat.name}</span>
+                    <button 
+                      onClick={() => deleteCategory('expense', cat.name)}
+                      className="text-slate-500 hover:text-rose-400 p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => deleteCategory('expense', cat.name)}
-                    className="text-slate-500 hover:text-rose-400 p-1"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Right Column: Monitors */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className={cn("space-y-4", session ? "lg:col-span-8" : "lg:col-span-12")}>
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 flex justify-between items-center mb-2">
             <h3 className="text-base font-bold text-white uppercase tracking-wider opacity-60">Monitoreo Mes Actual</h3>
             <span className="text-xs bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">{currentMonth}</span>
