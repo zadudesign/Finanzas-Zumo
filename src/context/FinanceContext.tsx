@@ -11,6 +11,7 @@ interface FinanceContextType {
   setBudget: (b: Omit<Budget, 'id'>) => Promise<void>;
   addCategory: (type: 'income' | 'expense', category: Category) => Promise<void>;
   deleteCategory: (type: 'income' | 'expense', name: string) => Promise<void>;
+  deleteBudget: (id: string) => Promise<void>;
   addAllocation: (a: Omit<AllocationRule, 'id'>) => Promise<void>;
   deleteAllocation: (id: string) => Promise<void>;
   resetDatabase: () => Promise<void>;
@@ -286,6 +287,25 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   };
 
+  const deleteBudget = async (id: string) => {
+    const budgetToDelete = data.budgets.find(b => b.id === id);
+    setData(prev => ({ ...prev, budgets: prev.budgets.filter(b => b.id !== id) }));
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && budgetToDelete) {
+          await supabase.from('categories')
+            .update({ amount: null })
+            .eq('user_id', session.user.id)
+            .eq('name', budgetToDelete.category)
+            .eq('type', 'expense');
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (delete budget):', error);
+      }
+    }
+  };
+
   const resetDatabase = async () => {
     const emptyData = {
       transactions: [],
@@ -314,7 +334,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
   };
 
   return (
-    <FinanceContext.Provider value={{ data, isLoading, addTransaction, deleteTransaction, setBudget, addCategory, deleteCategory, addAllocation, deleteAllocation, resetDatabase }}>
+    <FinanceContext.Provider value={{ data, isLoading, addTransaction, deleteTransaction, setBudget, deleteBudget, addCategory, deleteCategory, addAllocation, deleteAllocation, resetDatabase }}>
       {children}
     </FinanceContext.Provider>
   );
