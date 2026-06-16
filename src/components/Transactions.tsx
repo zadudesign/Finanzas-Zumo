@@ -18,8 +18,19 @@ export function Transactions() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [allocationFund, setAllocationFund] = useState('');
 
+  // Filter state
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterFund, setFilterFund] = useState('');
+
   // Get unique fund names
   const uniqueFunds = Array.from(new Set(data.allocations.map(a => a.fundName.trim())));
+
+  const filteredTransactions = data.transactions.filter(t => {
+    const matchCategory = filterCategory === '' || t.category === filterCategory;
+    const matchFund = filterFund === '' || t.allocationFund === filterFund;
+    return matchCategory && matchFund;
+  });
+  const filterTotal = (filterCategory || filterFund) ? filteredTransactions.reduce((acc, t) => acc + t.amount, 0) : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +154,47 @@ export function Transactions() {
         </form>
       )}
 
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Categoría:</label>
+            <select 
+              value={filterCategory} 
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="w-40 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
+            >
+              <option value="" className="bg-slate-800">Todas</option>
+              {[...data.categories.expense, ...data.categories.income].map(cat => (
+                <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          {uniqueFunds.length > 0 && (
+            <div className="flex items-center gap-3">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Rubro:</label>
+              <select 
+                value={filterFund} 
+                onChange={(e) => setFilterFund(e.target.value)}
+                className="w-40 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
+              >
+                <option value="" className="bg-slate-800">Todos</option>
+                {uniqueFunds.map(fund => (
+                  <option key={fund} value={fund} className="bg-slate-800">{fund}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        
+        {(filterCategory || filterFund) && (
+          <div className="text-right">
+            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Monto Total Filtrado</p>
+            <p className="text-2xl font-bold text-white font-mono">{formatCurrency(filterTotal)}</p>
+          </div>
+        )}
+      </div>
+
       <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden">
         <table className="w-full min-w-[700px]">
           <thead className="bg-white/5 border-b border-white/10">
@@ -156,13 +208,13 @@ export function Transactions() {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {data.transactions.length === 0 ? (
+            {filteredTransactions.length === 0 ? (
                <tr>
                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-sm">
                  No hay transacciones registradas.
                </td>
              </tr>
-            ) : data.transactions.map((t) => (
+            ) : filteredTransactions.map((t) => (
               <tr key={t.id} className="hover:bg-white/5 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{t.date}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200 font-medium">{t.description || '-'}</td>
