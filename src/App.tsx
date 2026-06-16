@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/Transactions';
 import { Budgets } from './components/Budgets';
+import { Allocations } from './components/Allocations';
 import { Settings } from './components/Settings';
 import { Auth } from './components/Auth';
 import { supabase, hasSupabaseConfig } from './lib/supabase';
@@ -42,6 +43,7 @@ function Layout() {
           {currentTab === 'dashboard' && <Dashboard />}
           {currentTab === 'transactions' && <Transactions />}
           {currentTab === 'budgets' && <Budgets />}
+          {currentTab === 'allocations' && <Allocations />}
           {currentTab === 'settings' && <Settings />}
         </div>
       </main>

@@ -21,9 +21,17 @@ export interface Category {
   icon: string;
 }
 
+export interface AllocationRule {
+  id: string;
+  incomeCategory: string;
+  fundName: string;
+  percentage: number;
+}
+
 export interface FinanceData {
   transactions: Transaction[];
   budgets: Budget[];
+  allocations: AllocationRule[];
   categories: {
     income: Category[];
     expense: Category[];

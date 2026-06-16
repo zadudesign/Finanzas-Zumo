@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { FinanceData, Transaction, Budget } from '../types';
+import type { FinanceData, Transaction, Budget, Category, AllocationRule } from '../types';
 import { DEFAULT_CATEGORIES } from '../types';
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
 
@@ -11,6 +11,8 @@ interface FinanceContextType {
   setBudget: (b: Omit<Budget, 'id'>) => Promise<void>;
   addCategory: (type: 'income' | 'expense', category: Category) => Promise<void>;
   deleteCategory: (type: 'income' | 'expense', name: string) => Promise<void>;
+  addAllocation: (a: Omit<AllocationRule, 'id'>) => Promise<void>;
+  deleteAllocation: (id: string) => Promise<void>;
   resetDatabase: () => Promise<void>;
 }
 
@@ -26,6 +28,7 @@ const mockInitialData: FinanceData = {
     { id: '1', category: 'Vivienda', amount: 1000000, month: new Date().toISOString().substring(0, 7) },
     { id: '2', category: 'Alimentación', amount: 400000, month: new Date().toISOString().substring(0, 7) },
   ],
+  allocations: [],
   categories: DEFAULT_CATEGORIES
 };
 
@@ -72,15 +75,17 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          const [{ data: txs, error: txError }, { data: bgts, error: bgtError }, { data: cats, error: catError }] = await Promise.all([
+          const [{ data: txs, error: txError }, { data: bgts, error: bgtError }, { data: cats, error: catError }, { data: allocs, error: allocsError }] = await Promise.all([
             supabase.from('transactions').select('*').order('date', { ascending: false }),
             supabase.from('budgets').select('*'),
-            supabase.from('categories').select('*')
+            supabase.from('categories').select('*'),
+            supabase.from('allocations').select('*')
           ]);
 
           if (!txError && txs) {
             let cloudCategories = data.categories; 
             let cloudBudgets = !bgtError && bgts ? (bgts as Budget[]) : data.budgets;
+            let cloudAllocations = !allocsError && allocs ? (allocs.map(a => ({ id: a.id, incomeCategory: a.income_category, fundName: a.fund_name, percentage: a.percentage }))) : data.allocations;
             
             if (!catError && cats) {
                cloudCategories = {
@@ -105,10 +110,11 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
             const cloudData = {
               transactions: txs as Transaction[],
               budgets: cloudBudgets,
-              categories: cloudCategories
+              categories: cloudCategories,
+              allocations: cloudAllocations || []
             };
             setData(prev => ({ ...prev, ...cloudData }));
-            localStorage.setItem('finance_data', JSON.stringify(cloudData));
+            localStorage.setItem('finance_data', JSON.stringify({ ...data, ...cloudData }));
           }
         }
       } catch (error) {
@@ -243,10 +249,48 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   };
 
+  const addAllocation = async (a: Omit<AllocationRule, 'id'>) => {
+    const newA = { ...a, id: crypto.randomUUID() };
+    setData(prev => ({ ...prev, allocations: [...prev.allocations, newA] }));
+
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { error } = await supabase.from('allocations').insert([{ 
+            id: newA.id, 
+            user_id: session.user.id, 
+            income_category: newA.incomeCategory,
+            fund_name: newA.fundName,
+            percentage: newA.percentage
+          }]);
+          if (error) throw error;
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (add allocation):', error);
+      }
+    }
+  };
+
+  const deleteAllocation = async (id: string) => {
+    setData(prev => ({ ...prev, allocations: prev.allocations.filter(a => a.id !== id) }));
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.from('allocations').delete().eq('id', id);
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (delete allocation):', error);
+      }
+    }
+  };
+
   const resetDatabase = async () => {
     const emptyData = {
       transactions: [],
       budgets: [],
+      allocations: [],
       categories: { income: [], expense: [] }
     };
     setData(emptyData);
@@ -259,7 +303,8 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
           await Promise.all([
             supabase.from('transactions').delete().eq('user_id', session.user.id),
             supabase.from('categories').delete().eq('user_id', session.user.id),
-            supabase.from('budgets').delete().eq('user_id', session.user.id)
+            supabase.from('budgets').delete().eq('user_id', session.user.id),
+            supabase.from('allocations').delete().eq('user_id', session.user.id)
           ]);
         }
       } catch (error) {
@@ -269,7 +314,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
   };
 
   return (
-    <FinanceContext.Provider value={{ data, isLoading, addTransaction, deleteTransaction, setBudget, addCategory, deleteCategory, resetDatabase }}>
+    <FinanceContext.Provider value={{ data, isLoading, addTransaction, deleteTransaction, setBudget, addCategory, deleteCategory, addAllocation, deleteAllocation, resetDatabase }}>
       {children}
     </FinanceContext.Provider>
   );

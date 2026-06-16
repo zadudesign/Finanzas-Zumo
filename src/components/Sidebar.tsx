@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, PieChart, Receipt, Settings, Wallet, LogOut, Database, CloudOff } from 'lucide-react';
+import { Home, PieChart, Receipt, Settings, Wallet, LogOut, Database, CloudOff, LayoutGrid } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
 
@@ -26,6 +26,7 @@ export function Sidebar({ currentTab, setCurrentTab, onShowAuth }: SidebarProps 
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'transactions', label: 'Transacciones', icon: Receipt },
     { id: 'budgets', label: 'Presupuestos', icon: PieChart },
+    { id: 'allocations', label: 'Distribución', icon: LayoutGrid }
   ];
 
   return (
