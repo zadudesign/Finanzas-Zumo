@@ -82,7 +82,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
             let cloudCategories = data.categories; 
             let cloudBudgets = !bgtError && bgts ? (bgts as Budget[]) : data.budgets;
             
-            if (!catError && cats && cats.length > 0) {
+            if (!catError && cats) {
                cloudCategories = {
                  income: cats.filter(c => c.type === 'income').map(c => ({ name: c.name, icon: c.icon })),
                  expense: cats.filter(c => c.type === 'expense').map(c => ({ name: c.name, icon: c.icon }))
@@ -97,6 +97,8 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
                    amount: c.amount,
                    month: c.month || new Date().toISOString().substring(0, 7)
                  }));
+               } else {
+                 cloudBudgets = [];
                }
             }
 
@@ -204,10 +206,12 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          await supabase.from('categories').upsert(
-            { user_id: session.user.id, name: category.name, type, icon: category.icon },
-            { onConflict: 'user_id,type,name' }
+          const { error } = await supabase.from('categories').insert(
+            [{ user_id: session.user.id, name: category.name, type, icon: category.icon }]
           );
+          if (error) {
+            console.error('Insert Category Error:', error);
+          }
         }
       } catch (error) {
         console.error('Supabase Sync Error (add category):', error);
@@ -246,6 +250,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       categories: { income: [], expense: [] }
     };
     setData(emptyData);
+    localStorage.removeItem('finance_data');
 
     if (hasSupabaseConfig) {
       try {
