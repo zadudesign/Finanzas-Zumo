@@ -109,7 +109,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
             }
 
             const cloudData = {
-              transactions: txs as Transaction[],
+              transactions: txs ? txs.map((t: any) => ({ ...t, allocationFund: t.allocation_fund })) as Transaction[] : [],
               budgets: cloudBudgets,
               categories: cloudCategories,
               allocations: cloudAllocations || []
@@ -142,7 +142,16 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
           // Intentamos insertar con el ID ya generado para mantener consistencia
           const { error } = await supabase
             .from('transactions')
-            .insert([{ ...t, id: newTransaction.id, user_id: session.user.id }]);
+            .insert([{ 
+              id: newTransaction.id, 
+              user_id: session.user.id,
+              type: t.type,
+              amount: t.amount,
+              category: t.category,
+              description: t.description,
+              date: t.date,
+              allocation_fund: t.allocationFund || null
+            }]);
           
           if (error) throw error;
         }

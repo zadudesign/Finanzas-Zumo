@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { AlertCircle, ArrowDownRight, ArrowUpRight, DollarSign } from 'lucide-react';
+import { AlertCircle, ArrowDownRight, ArrowUpRight, DollarSign, LayoutGrid } from 'lucide-react';
 
 import { LucideIcon } from './Settings';
 
@@ -68,6 +68,42 @@ export function Dashboard() {
       .filter(a => a.percentage >= 90); // Alertar si supera el 90%
   }, [data.transactions, data.budgets]);
 
+  // Distribuciones
+  const allocationSummary = useMemo(() => {
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    const incomeByCat: Record<string, number> = {};
+    
+    // Ingresos del mes actual
+    data.transactions.forEach(t => {
+      if (t.type === 'income' && t.date.startsWith(currentMonth)) {
+        incomeByCat[t.category] = (incomeByCat[t.category] || 0) + t.amount;
+      }
+    });
+
+    const aggregated: Record<string, { fundName: string; assignedAmount: number; sources: string[] }> = {};
+
+    data.allocations.forEach(a => {
+      const incomeForCat = incomeByCat[a.incomeCategory] || 0;
+      const assignedAmount = (incomeForCat * a.percentage) / 100;
+      
+      const key = a.fundName.trim();
+      if (!aggregated[key]) {
+        aggregated[key] = {
+          fundName: key,
+          assignedAmount: 0,
+          sources: []
+        };
+      }
+      aggregated[key].assignedAmount += assignedAmount;
+      const sourceLabel = `${a.incomeCategory} (${a.percentage}%)`;
+      if (!aggregated[key].sources.includes(sourceLabel)) {
+        aggregated[key].sources.push(sourceLabel);
+      }
+    });
+
+    return Object.values(aggregated);
+  }, [data.allocations, data.transactions]);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight text-white">Resumen Financiero</h1>
@@ -125,6 +161,35 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Distribución Actual */}
+      {allocationSummary.length > 0 && (
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
+          <h3 className="text-lg font-bold text-white mb-6 flex items-center">
+            <LayoutGrid className="w-5 h-5 mr-2 text-indigo-400" /> Estado de Distribución Mensual
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {allocationSummary.map((a, idx) => (
+              <div key={idx} className="bg-black/20 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+                 <div className="mb-2">
+                   <div className="flex flex-wrap gap-1 mb-2">
+                     {a.sources.map((s, i) => (
+                       <span key={i} className="inline-block px-2 py-0.5 bg-indigo-500/20 text-indigo-400 text-[10px] font-bold rounded uppercase tracking-wider">
+                         {s}
+                       </span>
+                     ))}
+                   </div>
+                   <h4 className="text-base font-bold text-white leading-tight">{a.fundName}</h4>
+                 </div>
+                 <div className="mt-2 text-right">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-0.5">Asignado</p>
+                    <p className="text-lg font-bold text-emerald-400 font-mono">{formatCurrency(a.assignedAmount)}</p>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
@@ -169,3 +234,4 @@ export function Dashboard() {
     </div>
   );
 }
+

@@ -7,6 +7,7 @@ export interface Transaction {
   category: string;
   description: string;
   date: string; // ISO format YYYY-MM-DD
+  allocationFund?: string;
 }
 
 export interface Budget {
