@@ -12,10 +12,22 @@ import { cn } from '../lib/utils';
 
 // Lista de iconos sugeridos para el picker
 const SUGGESTED_ICONS = [
-  'Tag', 'Wallet', 'TrendingUp', 'ShoppingBag', 'PlusCircle', 'Home', 'Utensils', 
-  'Car', 'Activity', 'Play', 'Book', 'CreditCard', 'Coffee', 'Gift', 'Heart', 
-  'Plane', 'Smartphone', 'Zap', 'DollarSign', 'PieChart', 'Briefcase', 'Hammer',
-  'Bike', 'ShoppingIcons', 'Music', 'Camera', 'Dumbbell', 'Gamepad', 'Tv'
+  // Finanzas
+  'Tag', 'Wallet', 'TrendingUp', 'TrendingDown', 'ShoppingBag', 'ShoppingCart', 'CreditCard', 'DollarSign', 'Coins', 'PiggyBank', 'Receipt', 'Banknote',
+  // Comida
+  'Utensils', 'Coffee', 'Beer', 'Wine', 'Pizza', 'Apple',
+  // Transporte
+  'Car', 'Bike', 'Bus', 'Train', 'Plane', 'Ship', 'Fuel',
+  // Hogar y Servicios
+  'Home', 'Zap', 'Droplet', 'Wifi', 'Phone', 'Lightbulb', 'Wrench',
+  // Entretenimiento
+  'Play', 'Music', 'Camera', 'Gamepad', 'Tv', 'Film', 'Ticket', 'Headphones',
+  // Salud
+  'Activity', 'Heart', 'Stethoscope', 'Pill', 'Dumbbell', 'Scissors',
+  // Personal
+  'Gift', 'Shirt', 'Watch', 'Glasses', 'Gem',
+  // Educación y Trabajo
+  'Book', 'GraduationCap', 'Briefcase', 'PenTool', 'Monitor', 'Laptop', 'Smartphone', 'Search'
 ];
 
 /**
