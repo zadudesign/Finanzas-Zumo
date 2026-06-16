@@ -80,7 +80,15 @@ export function Dashboard() {
       }
     });
 
-    const aggregated: Record<string, { fundName: string; assignedAmount: number; sources: string[] }> = {};
+    const aggregated: Record<string, { fundName: string; assignedAmount: number; consumedAmount: number; balance: number; sources: string[] }> = {};
+
+    // Obtener los gastos asociados a cada rubro en el mes actual
+    const fundExpenses: Record<string, number> = {};
+    data.transactions.forEach(t => {
+      if (t.type === 'expense' && t.date.startsWith(currentMonth) && t.allocationFund) {
+        fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
+      }
+    });
 
     data.allocations.forEach(a => {
       const incomeForCat = incomeByCat[a.incomeCategory] || 0;
@@ -91,6 +99,8 @@ export function Dashboard() {
         aggregated[key] = {
           fundName: key,
           assignedAmount: 0,
+          consumedAmount: 0,
+          balance: 0,
           sources: []
         };
       }
@@ -101,7 +111,11 @@ export function Dashboard() {
       }
     });
 
-    return Object.values(aggregated);
+    return Object.values(aggregated).map(fund => {
+      fund.consumedAmount = fundExpenses[fund.fundName] || 0;
+      fund.balance = fund.assignedAmount - fund.consumedAmount;
+      return fund;
+    });
   }, [data.allocations, data.transactions]);
 
   return (
@@ -131,64 +145,6 @@ export function Dashboard() {
           <span className="text-3xl font-bold text-rose-400 font-mono tracking-tight">-{formatCurrency(metrics.expense)}</span>
         </div>
       </div>
-
-      {/* Alertas */}
-      {alerts.length > 0 && (
-        <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-5 backdrop-blur-md">
-          <h3 className="text-sm font-bold text-rose-200 flex items-center mb-4">
-            <div className="w-8 h-8 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mr-3 animate-pulse border border-rose-500/40">
-              <AlertCircle className="w-4 h-4" />
-            </div>
-            Alertas de Presupuesto
-          </h3>
-          <div className="space-y-3 pl-11">
-            {alerts.map((alert, i) => {
-              const catObj = data.categories.expense.find(c => c.name === alert.category);
-              return (
-                <div key={i} className="flex justify-between items-center text-sm bg-black/20 p-3 rounded-xl border border-white/5">
-                  <div className="flex items-center gap-3">
-                    {catObj && <LucideIcon name={catObj.icon} className="w-4 h-4 text-rose-400" />}
-                    <span className="text-rose-100 font-medium">{alert.category}</span>
-                  </div>
-                  <span className="text-rose-200 opacity-80 font-mono">
-                    {formatCurrency(alert.spent)} / {formatCurrency(alert.budget)}
-                    <span className="ml-2 font-bold text-rose-400">({alert.percentage.toFixed(0)}%)</span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Distribución Actual */}
-      {allocationSummary.length > 0 && (
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
-          <h3 className="text-lg font-bold text-white mb-6 flex items-center">
-            <LayoutGrid className="w-5 h-5 mr-2 text-indigo-400" /> Estado de Distribución Mensual
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {allocationSummary.map((a, idx) => (
-              <div key={idx} className="bg-black/20 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
-                 <div className="mb-2">
-                   <div className="flex flex-wrap gap-1 mb-2">
-                     {a.sources.map((s, i) => (
-                       <span key={i} className="inline-block px-2 py-0.5 bg-indigo-500/20 text-indigo-400 text-[10px] font-bold rounded uppercase tracking-wider">
-                         {s}
-                       </span>
-                     ))}
-                   </div>
-                   <h4 className="text-base font-bold text-white leading-tight">{a.fundName}</h4>
-                 </div>
-                 <div className="mt-2 text-right">
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-0.5">Asignado</p>
-                    <p className="text-lg font-bold text-emerald-400 font-mono">{formatCurrency(a.assignedAmount)}</p>
-                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -231,6 +187,74 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Distribución Actual */}
+      {allocationSummary.length > 0 && (
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
+          <h3 className="text-lg font-bold text-white mb-6 flex items-center">
+            <LayoutGrid className="w-5 h-5 mr-2 text-indigo-400" /> Estado de Distribución Mensual
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {allocationSummary.map((a, idx) => (
+              <div key={idx} className="bg-black/20 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+                 <div className="mb-2">
+                   <div className="flex flex-wrap gap-1 mb-2">
+                     {a.sources.map((s, i) => (
+                       <span key={i} className="inline-block px-2 py-0.5 bg-indigo-500/20 text-indigo-400 text-[10px] font-bold rounded uppercase tracking-wider">
+                         {s}
+                       </span>
+                     ))}
+                   </div>
+                   <h4 className="text-base font-bold text-white leading-tight">{a.fundName}</h4>
+                 </div>
+                 <div className="mt-3 flex flex-col gap-2">
+                    <div className="flex justify-between items-end">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-none">Asignado</p>
+                      <p className="text-sm font-bold text-slate-300 font-mono leading-none">{formatCurrency(a.assignedAmount)}</p>
+                    </div>
+                    <div className="flex justify-between items-end">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-none">Consumido</p>
+                      <p className="text-sm font-bold text-rose-400 font-mono leading-none">-{formatCurrency(a.consumedAmount)}</p>
+                    </div>
+                    <div className="flex justify-between items-end mt-1 pt-2 border-t border-white/5">
+                      <p className="text-[11px] uppercase tracking-widest font-bold leading-none text-slate-400">Saldo</p>
+                      <p className={cn("text-lg font-bold font-mono leading-none", a.balance < 0 ? "text-rose-400" : "text-emerald-400")}>{formatCurrency(a.balance)}</p>
+                    </div>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Alertas */}
+      {alerts.length > 0 && (
+        <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-5 backdrop-blur-md">
+          <h3 className="text-sm font-bold text-rose-200 flex items-center mb-4">
+            <div className="w-8 h-8 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mr-3 animate-pulse border border-rose-500/40">
+              <AlertCircle className="w-4 h-4" />
+            </div>
+            Alertas de Presupuesto
+          </h3>
+          <div className="space-y-3 pl-11">
+            {alerts.map((alert, i) => {
+              const catObj = data.categories.expense.find(c => c.name === alert.category);
+              return (
+                <div key={i} className="flex justify-between items-center text-sm bg-black/20 p-3 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-3">
+                    {catObj && <LucideIcon name={catObj.icon} className="w-4 h-4 text-rose-400" />}
+                    <span className="text-rose-100 font-medium">{alert.category}</span>
+                  </div>
+                  <span className="text-rose-200 opacity-80 font-mono">
+                    {formatCurrency(alert.spent)} / {formatCurrency(alert.budget)}
+                    <span className="ml-2 font-bold text-rose-400">({alert.percentage.toFixed(0)}%)</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
