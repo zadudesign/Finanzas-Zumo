@@ -65,7 +65,7 @@ export function Dashboard() {
         const percentage = (spent / b.amount) * 100;
         return { category: b.category, spent, budget: b.amount, percentage };
       })
-      .filter(a => a.percentage >= 90); // Alertar si supera el 90%
+      .filter(a => a.percentage > 100); // Alertar si supera el 100%
   }, [data.transactions, data.budgets]);
 
   // Distribuciones
