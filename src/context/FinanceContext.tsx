@@ -240,12 +240,12 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
   };
 
   const resetDatabase = async () => {
-    setData({
+    const emptyData = {
       transactions: [],
       budgets: [],
-      categories: DEFAULT_CATEGORIES
-    });
-    localStorage.removeItem('finance_data');
+      categories: { income: [], expense: [] }
+    };
+    setData(emptyData);
 
     if (hasSupabaseConfig) {
       try {
