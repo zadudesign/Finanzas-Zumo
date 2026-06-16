@@ -43,6 +43,12 @@ export function Budgets() {
       });
   }, [data.transactions, data.budgets, currentMonth]);
 
+  const totalBudgetAmount = useMemo(() => {
+    return data.budgets
+      .filter(b => b.month === currentMonth)
+      .reduce((sum, b) => sum + b.amount, 0);
+  }, [data.budgets, currentMonth]);
+
   const handleSubmitBudget = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount)) || !category) return;
@@ -105,9 +111,15 @@ export function Budgets() {
 
         {/* Right Column: Monitors */}
         <div className={cn("space-y-4", session ? "lg:col-span-8" : "lg:col-span-12")}>
-          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 flex justify-between items-center mb-2">
-            <h3 className="text-base font-bold text-white uppercase tracking-wider opacity-60">Monitoreo Mes Actual</h3>
-            <span className="text-xs bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">{currentMonth}</span>
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+            <div>
+              <h3 className="text-base font-bold text-white uppercase tracking-wider opacity-60">Monitoreo Mes Actual</h3>
+              <span className="text-xs bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30 inline-block mt-2">{currentMonth}</span>
+            </div>
+            <div className="md:text-right">
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Presupuesto Mensual Total</p>
+              <p className="text-2xl font-bold text-indigo-400">{formatCurrency(totalBudgetAmount)}</p>
+            </div>
           </div>
 
           {budgetProgress.length === 0 ? (
