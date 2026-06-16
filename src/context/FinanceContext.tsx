@@ -250,7 +250,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       categories: { income: [], expense: [] }
     };
     setData(emptyData);
-    localStorage.removeItem('finance_data');
+    localStorage.setItem('finance_data', JSON.stringify(emptyData));
 
     if (hasSupabaseConfig) {
       try {

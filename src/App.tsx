@@ -15,7 +15,10 @@ function Layout() {
 
   useEffect(() => {
     if (hasSupabaseConfig) {
-      supabase.auth.getSession().then(({ data: { session } }) => setSession(session)).catch(console.error);
+      supabase.auth.getSession().then(({ data: { session }, error }) => {
+        if (error && error.message.includes('Refresh Token')) supabase.auth.signOut();
+        else setSession(session);
+      }).catch(() => {});
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
       return () => subscription.unsubscribe();
     }

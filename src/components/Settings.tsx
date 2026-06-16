@@ -36,7 +36,10 @@ export function Settings() {
 
   useEffect(() => {
     if (hasSupabaseConfig) {
-      supabase.auth.getSession().then(({ data: { session } }) => setSession(session)).catch(console.error);
+      supabase.auth.getSession().then(({ data: { session }, error }) => {
+        if (error && error.message?.includes('Refresh Token')) supabase.auth.signOut();
+        else setSession(session);
+      }).catch(() => {});
     }
   }, []);
 
