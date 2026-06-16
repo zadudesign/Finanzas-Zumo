@@ -27,7 +27,7 @@ export function LucideIcon({ name, className }: { name: string, className?: stri
 }
 
 export function Settings() {
-  const { data, addCategory, deleteCategory } = useFinance();
+  const { data, addCategory, deleteCategory, resetDatabase } = useFinance();
   const [session, setSession] = useState<any>(null);
   const [newCatName, setNewCatName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('Tag');
@@ -229,6 +229,33 @@ export function Settings() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Zona de Peligro */}
+        {session && (
+          <div className="lg:col-span-3">
+            <div className="bg-rose-500/10 backdrop-blur-xl border border-rose-500/20 rounded-3xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-rose-400 uppercase tracking-widest flex items-center mb-1">
+                  <Trash2 className="w-4 h-4 mr-2" /> Zona de Peligro
+                </h3>
+                <p className="text-sm text-slate-400">
+                  Limpiar la base de datos es una acción que no se puede deshacer. Todos tus datos en la nube (transacciones, categorías y metas de presupuesto) serán borrados permanentemente.
+                </p>
+              </div>
+              <button 
+                onClick={async () => {
+                  if (window.confirm('¿Estás MÁS QUE SEGURO de que deseas borrar todos tus datos de forma permanente? Esta acción borrará la BBDD.')) {
+                    await resetDatabase();
+                    alert('Base de datos limpiada. Puedes empezar desde cero.');
+                  }
+                }}
+                className="shrink-0 px-6 py-3 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/20"
+              >
+                Limpiar Base de Datos
+              </button>
             </div>
           </div>
         )}

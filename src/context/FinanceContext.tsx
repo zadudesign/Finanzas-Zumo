@@ -11,6 +11,7 @@ interface FinanceContextType {
   setBudget: (b: Omit<Budget, 'id'>) => Promise<void>;
   addCategory: (type: 'income' | 'expense', category: Category) => Promise<void>;
   deleteCategory: (type: 'income' | 'expense', name: string) => Promise<void>;
+  resetDatabase: () => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -238,8 +239,32 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   };
 
+  const resetDatabase = async () => {
+    setData({
+      transactions: [],
+      budgets: [],
+      categories: DEFAULT_CATEGORIES
+    });
+    localStorage.removeItem('finance_data');
+
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await Promise.all([
+            supabase.from('transactions').delete().eq('user_id', session.user.id),
+            supabase.from('categories').delete().eq('user_id', session.user.id),
+            supabase.from('budgets').delete().eq('user_id', session.user.id)
+          ]);
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (reset db):', error);
+      }
+    }
+  };
+
   return (
-    <FinanceContext.Provider value={{ data, isLoading, addTransaction, deleteTransaction, setBudget, addCategory, deleteCategory }}>
+    <FinanceContext.Provider value={{ data, isLoading, addTransaction, deleteTransaction, setBudget, addCategory, deleteCategory, resetDatabase }}>
       {children}
     </FinanceContext.Provider>
   );
