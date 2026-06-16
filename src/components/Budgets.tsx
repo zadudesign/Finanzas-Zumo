@@ -1,18 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
-import { Target, Plus, Trash2, Tag, HelpCircle } from 'lucide-react';
+import { Target, Tag, HelpCircle } from 'lucide-react';
 import { LucideIcon } from './Settings';
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
 
 export function Budgets() {
-  const { data, setBudget, addCategory, deleteCategory } = useFinance();
+  const { data, setBudget } = useFinance();
   const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
   const [session, setSession] = useState<any>(null);
   
   const [category, setCategory] = useState(data.categories.expense[0]?.name || '');
   const [amount, setAmount] = useState('');
-  const [newCatName, setNewCatName] = useState('');
 
   useEffect(() => {
     if (hasSupabaseConfig) {
@@ -46,13 +45,6 @@ export function Budgets() {
     if (!amount || isNaN(Number(amount)) || !category) return;
     setBudget({ category, amount: Number(amount), month: currentMonth });
     setAmount('');
-  };
-
-  const handleAddCategory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
-    addCategory('expense', { name: newCatName.trim(), icon: 'Tag' });
-    setNewCatName('');
   };
 
   return (
@@ -105,48 +97,6 @@ export function Budgets() {
                 Guardar Límite
               </button>
             </form>
-
-            {/* Gestión de Categorías */}
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-white mb-2 flex items-center">
-                  <Tag className="w-5 h-5 mr-2 text-cyan-400" /> Categorías
-                </h3>
-                <p className="text-xs text-slate-400 opacity-80">Administra tus tipos de gastos.</p>
-              </div>
-
-              <form onSubmit={handleAddCategory} className="flex gap-2">
-                <input 
-                  type="text"
-                  placeholder="Nueva Categoría"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  className="flex-1 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-                <button type="submit" className="p-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors">
-                  <Plus className="w-5 h-5" />
-                </button>
-              </form>
-
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                {data.categories.expense.map(cat => (
-                  <div key={cat.name} className="flex justify-between items-center bg-black/20 px-3 py-2 rounded-xl border border-white/5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                        <LucideIcon name={cat.icon} className="w-4 h-4" />
-                      </div>
-                      <span className="text-sm text-slate-300">{cat.name}</span>
-                    </div>
-                    <button 
-                      onClick={() => deleteCategory('expense', cat.name)}
-                      className="text-slate-500 hover:text-rose-400 p-1"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 

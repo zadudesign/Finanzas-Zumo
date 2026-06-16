@@ -110,126 +110,128 @@ export function Settings() {
           </div>
         </div>
 
-        {/* Maestro de Categorías */}
-        <div className="lg:col-span-2">
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 h-full">
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <h3 className="text-lg font-bold text-white mb-1 flex items-center">
-                  <Tag className="w-5 h-5 mr-3 text-cyan-400" /> Administrador de Categorías
-                </h3>
-                <p className="text-sm text-slate-400">Define nombres e iconos para tus flujos de dinero.</p>
-              </div>
-              
-              <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
-                <button 
-                  onClick={() => setActiveCatType('income')}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all",
-                    activeCatType === 'income' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-slate-500 hover:text-slate-300"
-                  )}
-                >
-                  <ArrowUpRight className="w-3 h-3" /> Ingresos
-                </button>
-                <button 
-                  onClick={() => setActiveCatType('expense')}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all",
-                    activeCatType === 'expense' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-slate-500 hover:text-slate-300"
-                  )}
-                >
-                  <ArrowDownRight className="w-3 h-3" /> Gastos
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <form onSubmit={handleAddCategory} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nueva Categoría</label>
-                    <div className="flex flex-col gap-3">
-                      <div className="flex gap-2">
-                        <button 
-                          type="button"
-                          onClick={() => setShowIconPicker(!showIconPicker)}
-                          className="w-12 h-12 bg-black/20 border border-white/10 rounded-xl flex items-center justify-center text-white hover:bg-black/40 transition-colors"
-                        >
-                          <LucideIcon name={selectedIcon} className="w-6 h-6" />
-                        </button>
-                        <input 
-                          type="text"
-                          placeholder="Nombre (ej: Gimnasio)"
-                          value={newCatName}
-                          onChange={(e) => setNewCatName(e.target.value)}
-                          className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
-                        />
-                      </div>
-
-                      {showIconPicker && (
-                        <div className="bg-black/40 border border-white/10 rounded-2xl p-4 grid grid-cols-6 gap-2 max-h-48 overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-200">
-                          {SUGGESTED_ICONS.map(iconName => (
-                            <button
-                              key={iconName}
-                              type="button"
-                              onClick={() => {
-                                setSelectedIcon(iconName);
-                                setShowIconPicker(false);
-                              }}
-                              className={cn(
-                                "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
-                                selectedIcon === iconName ? "bg-indigo-500 text-white" : "text-slate-400 hover:bg-white/10 hover:text-white"
-                              )}
-                            >
-                              <LucideIcon name={iconName} className="w-5 h-5" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      <button type="submit" className="w-full py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
-                        Crear Categoría
-                      </button>
-                    </div>
-                  </div>
-                </form>
-
-                <div className="bg-indigo-500/5 border border-indigo-500/10 p-4 rounded-2xl">
-                  <p className="text-[11px] text-indigo-300/80 leading-relaxed italic">
-                    "Usa iconos descriptivos para identificar tus consumos de un vistazo en el dashboard."
-                  </p>
+        {/* Maestro de Categorías (solo para administradores) */}
+        {session && (
+          <div className="lg:col-span-2">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 h-full">
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-1 flex items-center">
+                    <Tag className="w-5 h-5 mr-3 text-cyan-400" /> Administrador de Categorías
+                  </h3>
+                  <p className="text-sm text-slate-400">Define nombres e iconos para tus flujos de dinero.</p>
+                </div>
+                
+                <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
+                  <button 
+                    onClick={() => setActiveCatType('income')}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                      activeCatType === 'income' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-slate-500 hover:text-slate-300"
+                    )}
+                  >
+                    <ArrowUpRight className="w-3 h-3" /> Ingresos
+                  </button>
+                  <button 
+                    onClick={() => setActiveCatType('expense')}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                      activeCatType === 'expense' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" : "text-slate-500 hover:text-slate-300"
+                    )}
+                  >
+                    <ArrowDownRight className="w-3 h-3" /> Gastos
+                  </button>
                 </div>
               </div>
 
-              <div className="bg-black/20 rounded-2xl border border-white/5 p-2 h-[400px] overflow-y-auto custom-scrollbar">
-                <div className="grid grid-cols-1 gap-1">
-                  {data.categories[activeCatType].map(cat => (
-                    <div 
-                      key={cat.name} 
-                      className="flex justify-between items-center px-4 py-3 rounded-xl hover:bg-white/5 transition-all group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center",
-                          activeCatType === 'income' ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
-                        )}>
-                          <LucideIcon name={cat.icon} className="w-5 h-5" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <form onSubmit={handleAddCategory} className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nueva Categoría</label>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => setShowIconPicker(!showIconPicker)}
+                            className="w-12 h-12 bg-black/20 border border-white/10 rounded-xl flex items-center justify-center text-white hover:bg-black/40 transition-colors"
+                          >
+                            <LucideIcon name={selectedIcon} className="w-6 h-6" />
+                          </button>
+                          <input 
+                            type="text"
+                            placeholder="Nombre (ej: Gimnasio)"
+                            value={newCatName}
+                            onChange={(e) => setNewCatName(e.target.value)}
+                            className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
+                          />
                         </div>
-                        <span className="text-sm font-medium text-slate-200">{cat.name}</span>
+
+                        {showIconPicker && (
+                          <div className="bg-black/40 border border-white/10 rounded-2xl p-4 grid grid-cols-6 gap-2 max-h-48 overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-200">
+                            {SUGGESTED_ICONS.map(iconName => (
+                              <button
+                                key={iconName}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedIcon(iconName);
+                                  setShowIconPicker(false);
+                                }}
+                                className={cn(
+                                  "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
+                                  selectedIcon === iconName ? "bg-indigo-500 text-white" : "text-slate-400 hover:bg-white/10 hover:text-white"
+                                )}
+                              >
+                                <LucideIcon name={iconName} className="w-5 h-5" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        <button type="submit" className="w-full py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
+                          Crear Categoría
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => deleteCategory(activeCatType, cat.name)}
-                        className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
-                  ))}
+                  </form>
+
+                  <div className="bg-indigo-500/5 border border-indigo-500/10 p-4 rounded-2xl">
+                    <p className="text-[11px] text-indigo-300/80 leading-relaxed italic">
+                      "Usa iconos descriptivos para identificar tus consumos de un vistazo en el dashboard."
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-black/20 rounded-2xl border border-white/5 p-2 h-[400px] overflow-y-auto custom-scrollbar">
+                  <div className="grid grid-cols-1 gap-1">
+                    {data.categories[activeCatType].map(cat => (
+                      <div 
+                        key={cat.name} 
+                        className="flex justify-between items-center px-4 py-3 rounded-xl hover:bg-white/5 transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center",
+                            activeCatType === 'income' ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                          )}>
+                            <LucideIcon name={cat.icon} className="w-5 h-5" />
+                          </div>
+                          <span className="text-sm font-medium text-slate-200">{cat.name}</span>
+                        </div>
+                        <button 
+                          onClick={() => deleteCategory(activeCatType, cat.name)}
+                          className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
