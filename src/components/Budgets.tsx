@@ -128,7 +128,7 @@ export function Budgets() {
                         const catObj = data.categories.expense.find(c => c.name === bp.category);
                         return (
                           <div className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center mr-3 transition-colors",
+                            "w-10 h-10 rounded-xl flex items-center justify-center mr-3 transition-colors relative",
                             bp.percentage >= 90 ? "bg-rose-500/20 text-rose-400" : bp.percentage >= 75 ? "bg-orange-500/20 text-orange-400" : "bg-cyan-500/20 text-cyan-400"
                           )}>
                             <LucideIcon name={catObj?.icon || 'Tag'} className="w-5 h-5" />
@@ -136,7 +136,22 @@ export function Budgets() {
                         );
                       })()}
                       <div>
-                        <h4 className="font-bold text-white text-lg">{bp.category}</h4>
+                        <h4 className="font-bold text-white text-lg flex items-center gap-2">
+                          {bp.category}
+                          <button 
+                            onClick={() => {
+                              setCategory(bp.category);
+                              setAmount(bp.amount.toString());
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="text-slate-500 hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Editar Presupuesto"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                        </h4>
                         <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Consumido</p>
                       </div>
                     </div>
