@@ -50,6 +50,39 @@ export function Budgets() {
       .reduce((sum, b) => sum + b.amount, 0);
   }, [data.budgets, currentMonth]);
 
+  const specialFundsBalance = useMemo(() => {
+    const incomeByCat: Record<string, number> = {};
+    const fundExpenses: Record<string, number> = {};
+    
+    data.transactions.forEach(t => {
+      if (t.date.startsWith(currentMonth)) {
+        if (t.type === 'income') {
+          incomeByCat[t.category] = (incomeByCat[t.category] || 0) + t.amount;
+        } else if (t.type === 'expense' && t.allocationFund) {
+          fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
+        }
+      }
+    });
+
+    const fundAssigned: Record<string, number> = {};
+    data.allocations.forEach(a => {
+      const incomeForCat = incomeByCat[a.incomeCategory] || 0;
+      const assigned = (incomeForCat * a.percentage) / 100;
+      const key = a.fundName.trim();
+      fundAssigned[key] = (fundAssigned[key] || 0) + assigned;
+    });
+
+    const inversionAssigned = fundAssigned['Inversión'] || 0;
+    const inversionConsumed = fundExpenses['Inversión'] || 0;
+    const obligacionesAssigned = fundAssigned['Obligaciones'] || 0;
+    const obligacionesConsumed = fundExpenses['Obligaciones'] || 0;
+
+    return {
+      inversion: inversionAssigned - inversionConsumed,
+      obligaciones: obligacionesAssigned - obligacionesConsumed
+    };
+  }, [data.transactions, data.allocations, currentMonth]);
+
   const handleSubmitBudget = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount)) || !category) return;
@@ -208,6 +241,33 @@ export function Budgets() {
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Special Funds Monitors */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+            <Target className="w-4 h-4 text-indigo-400" />
+            Inversión
+          </h3>
+          <p className="text-3xl font-bold font-mono text-white mb-1">
+            {formatCurrency(specialFundsBalance.inversion)}
+          </p>
+          <p className="text-xs text-slate-400">Saldo disponible este mes</p>
+        </div>
+
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+            <Target className="w-4 h-4 text-emerald-400" />
+            Obligaciones
+          </h3>
+          <p className="text-3xl font-bold font-mono text-white mb-1">
+            {formatCurrency(specialFundsBalance.obligaciones)}
+          </p>
+          <p className="text-xs text-slate-400">Saldo disponible este mes</p>
         </div>
       </div>
     </div>
