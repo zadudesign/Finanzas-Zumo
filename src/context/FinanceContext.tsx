@@ -74,7 +74,15 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     // 2. Si Supabase está configurado, intentar traer datos frescos
     if (hasSupabaseConfig) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+           if (error.message.includes('Refresh Token') || error.message.includes('refresh_token_not_found')) {
+             await supabase.auth.signOut();
+           }
+           console.error('Session error:', error);
+           setIsLoading(false);
+           return;
+        }
         if (session) {
           const [{ data: txs, error: txError }, { data: bgts, error: bgtError }, { data: cats, error: catError }, { data: allocs, error: allocsError }] = await Promise.all([
             supabase.from('transactions').select('*').order('date', { ascending: false }),

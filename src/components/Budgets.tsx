@@ -40,7 +40,8 @@ export function Budgets() {
         const spent = expensesByCategory[b.category] || 0;
         const percentage = Math.min((spent / b.amount) * 100, 100);
         return { ...b, spent, percentage };
-      });
+      })
+      .sort((a, b) => a.category.localeCompare(b.category));
   }, [data.transactions, data.budgets, currentMonth]);
 
   const totalBudgetAmount = useMemo(() => {

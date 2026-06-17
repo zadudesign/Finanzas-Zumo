@@ -115,7 +115,7 @@ export function Dashboard() {
       fund.consumedAmount = fundExpenses[fund.fundName] || 0;
       fund.balance = fund.assignedAmount - fund.consumedAmount;
       return fund;
-    });
+    }).sort((a, b) => a.fundName.localeCompare(b.fundName));
   }, [data.allocations, data.transactions]);
 
   return (

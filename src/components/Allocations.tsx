@@ -13,7 +13,9 @@ export function Allocations() {
   const currentMonth = new Date().toISOString().substring(0, 7);
 
   // Totals calculation
-  const allocationsForCategory = data.allocations.filter(a => a.incomeCategory === selectedIncomeCat);
+  const allocationsForCategory = data.allocations
+    .filter(a => a.incomeCategory === selectedIncomeCat)
+    .sort((a, b) => a.fundName.localeCompare(b.fundName));
   const currentTotalPercent = allocationsForCategory.reduce((acc, a) => acc + a.percentage, 0);
 
   // Calculate total income for the selected category in the current month

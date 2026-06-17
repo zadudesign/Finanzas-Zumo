@@ -17,10 +17,22 @@ function Layout() {
   useEffect(() => {
     if (hasSupabaseConfig) {
       supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error && error.message.includes('Refresh Token')) supabase.auth.signOut();
-        else setSession(session);
+        if (error) {
+          if (error.message.includes('Refresh Token') || error.message.includes('not found')) {
+            supabase.auth.signOut().catch(() => {});
+            localStorage.removeItem('supabase.auth.token');
+          }
+        } else {
+          setSession(session);
+        }
       }).catch(() => {});
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+           setSession(null);
+        } else if (session) {
+           setSession(session);
+        }
+      });
       return () => subscription.unsubscribe();
     }
   }, []);

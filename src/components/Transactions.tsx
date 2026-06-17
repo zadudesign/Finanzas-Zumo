@@ -25,11 +25,13 @@ export function Transactions() {
   // Get unique fund names
   const uniqueFunds = Array.from(new Set(data.allocations.map(a => a.fundName.trim())));
 
-  const filteredTransactions = data.transactions.filter(t => {
-    const matchCategory = filterCategory === '' || t.category === filterCategory;
-    const matchFund = filterFund === '' || t.allocationFund === filterFund;
-    return matchCategory && matchFund;
-  });
+  const filteredTransactions = [...data.transactions]
+    .filter(t => {
+      const matchCategory = filterCategory === '' || t.category === filterCategory;
+      const matchFund = filterFund === '' || t.allocationFund === filterFund;
+      return matchCategory && matchFund;
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const filterTotal = (filterCategory || filterFund) ? filteredTransactions.reduce((acc, t) => acc + t.amount, 0) : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
