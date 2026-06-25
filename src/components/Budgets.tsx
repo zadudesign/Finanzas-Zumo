@@ -1,17 +1,30 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
-import { Target, Tag, HelpCircle } from 'lucide-react';
+import { Target, Tag, HelpCircle, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import { LucideIcon } from './Settings';
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
 
 export function Budgets() {
-  const { data, setBudget, deleteBudget } = useFinance();
+  const { 
+    data, 
+    setBudget, 
+    deleteBudget, 
+    addSpecialFundItem, 
+    deleteSpecialFundItem, 
+    toggleSpecialFundItem 
+  } = useFinance();
   const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
   const [session, setSession] = useState<any>(null);
   
   const [category, setCategory] = useState(data.categories.expense[0]?.name || '');
   const [amount, setAmount] = useState('');
+
+  // Form states for Special Fund Items
+  const [inversionName, setInversionName] = useState('');
+  const [inversionAmount, setInversionAmount] = useState('');
+  const [obligacionesName, setObligacionesName] = useState('');
+  const [obligacionesAmount, setObligacionesAmount] = useState('');
 
   useEffect(() => {
     if (hasSupabaseConfig) {
@@ -88,6 +101,48 @@ export function Budgets() {
     if (!amount || isNaN(Number(amount)) || !category) return;
     setBudget({ category, amount: Number(amount), month: currentMonth });
     setAmount('');
+  };
+
+  const inversionItems = useMemo(() => {
+    return (data.specialFundItems || []).filter(item => item.fundType === 'Inversión');
+  }, [data.specialFundItems]);
+
+  const obligacionesItems = useMemo(() => {
+    return (data.specialFundItems || []).filter(item => item.fundType === 'Obligaciones');
+  }, [data.specialFundItems]);
+
+  const totalInversionPlanned = useMemo(() => {
+    return inversionItems.reduce((acc, item) => acc + item.amount, 0);
+  }, [inversionItems]);
+
+  const totalObligacionesPlanned = useMemo(() => {
+    return obligacionesItems.reduce((acc, item) => acc + item.amount, 0);
+  }, [obligacionesItems]);
+
+  const handleAddInversionItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inversionName || !inversionAmount || isNaN(Number(inversionAmount))) return;
+    addSpecialFundItem({
+      fundType: 'Inversión',
+      name: inversionName,
+      amount: Number(inversionAmount),
+      isCompleted: false
+    });
+    setInversionName('');
+    setInversionAmount('');
+  };
+
+  const handleAddObligacionesItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!obligacionesName || !obligacionesAmount || isNaN(Number(obligacionesAmount))) return;
+    addSpecialFundItem({
+      fundType: 'Obligaciones',
+      name: obligacionesName,
+      amount: Number(obligacionesAmount),
+      isCompleted: false
+    });
+    setObligacionesName('');
+    setObligacionesAmount('');
   };
 
   return (
@@ -246,28 +301,198 @@ export function Budgets() {
 
       {/* Special Funds Monitors */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+        {/* Inversión */}
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between">
           <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-2">
-            <Target className="w-4 h-4 text-indigo-400" />
-            Inversión
-          </h3>
-          <p className="text-3xl font-bold font-mono text-white mb-1">
-            {formatCurrency(specialFundsBalance.inversion)}
-          </p>
-          <p className="text-xs text-slate-400">Saldo disponible este mes</p>
+          <div>
+            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <Target className="w-4 h-4 text-indigo-400" />
+              Inversión
+            </h3>
+            <p className="text-3xl font-bold font-mono text-white mb-1">
+              {formatCurrency(specialFundsBalance.inversion)}
+            </p>
+            <p className="text-xs text-slate-400">Saldo disponible este mes</p>
+            
+            {/* Wishlist items to acquire */}
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex justify-between items-center">
+                <span>Wishlist (Para Adquirir)</span>
+                <span className="text-indigo-400 font-mono text-[11px]">Total: {formatCurrency(totalInversionPlanned)}</span>
+              </h4>
+              
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {inversionItems.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2 text-center">No hay elementos agregados aún.</p>
+                ) : (
+                  inversionItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between bg-white/5 hover:bg-white/10 p-2.5 rounded-xl border border-white/5 transition-all group">
+                      <button 
+                        type="button" 
+                        onClick={() => toggleSpecialFundItem(item.id, !item.isCompleted)}
+                        className="flex items-center gap-2.5 text-left flex-1 min-w-0"
+                      >
+                        {item.isCompleted ? (
+                          <CheckSquare className="w-4 h-4 text-indigo-400 shrink-0" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-500 shrink-0 hover:text-indigo-400 transition-colors" />
+                        )}
+                        <span className={cn(
+                          "text-xs font-medium text-slate-200 truncate",
+                          item.isCompleted && "line-through text-slate-500"
+                        )}>
+                          {item.name}
+                        </span>
+                      </button>
+                      <div className="flex items-center gap-3 shrink-0 ml-2">
+                        <span className={cn(
+                          "text-xs font-semibold font-mono text-slate-300",
+                          item.isCompleted && "text-slate-500"
+                        )}>
+                          {formatCurrency(item.amount)}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (window.confirm('¿Eliminar este elemento?')) {
+                              deleteSpecialFundItem(item.id);
+                            }
+                          }}
+                          className="text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Add form */}
+          <form onSubmit={handleAddInversionItem} className="flex gap-2 mt-4 pt-4 border-t border-white/5 shrink-0">
+            <input
+              type="text"
+              placeholder="Ej: Nueva Laptop..."
+              value={inversionName}
+              onChange={e => setInversionName(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 flex-1 min-w-0"
+              required
+            />
+            <input
+              type="number"
+              placeholder="Precio"
+              value={inversionAmount}
+              onChange={e => setInversionAmount(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 w-20 font-mono"
+              required
+            />
+            <button
+              type="submit"
+              className="bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white p-2 rounded-xl transition-all flex items-center justify-center shrink-0"
+              title="Agregar"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </form>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+        {/* Obligaciones */}
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between">
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-2">
-            <Target className="w-4 h-4 text-emerald-400" />
-            Obligaciones
-          </h3>
-          <p className="text-3xl font-bold font-mono text-white mb-1">
-            {formatCurrency(specialFundsBalance.obligaciones)}
-          </p>
-          <p className="text-xs text-slate-400">Saldo disponible este mes</p>
+          <div>
+            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <Target className="w-4 h-4 text-emerald-400" />
+              Obligaciones
+            </h3>
+            <p className="text-3xl font-bold font-mono text-white mb-1">
+              {formatCurrency(specialFundsBalance.obligaciones)}
+            </p>
+            <p className="text-xs text-slate-400">Saldo disponible este mes</p>
+            
+            {/* Obligation items to pay */}
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex justify-between items-center">
+                <span>Obligaciones (Por Pagar)</span>
+                <span className="text-emerald-400 font-mono text-[11px]">Total: {formatCurrency(totalObligacionesPlanned)}</span>
+              </h4>
+              
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {obligacionesItems.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2 text-center">No hay elementos agregados aún.</p>
+                ) : (
+                  obligacionesItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between bg-white/5 hover:bg-white/10 p-2.5 rounded-xl border border-white/5 transition-all group">
+                      <button 
+                        type="button" 
+                        onClick={() => toggleSpecialFundItem(item.id, !item.isCompleted)}
+                        className="flex items-center gap-2.5 text-left flex-1 min-w-0"
+                      >
+                        {item.isCompleted ? (
+                          <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-500 shrink-0 hover:text-emerald-400 transition-colors" />
+                        )}
+                        <span className={cn(
+                          "text-xs font-medium text-slate-200 truncate",
+                          item.isCompleted && "line-through text-slate-500"
+                        )}>
+                          {item.name}
+                        </span>
+                      </button>
+                      <div className="flex items-center gap-3 shrink-0 ml-2">
+                        <span className={cn(
+                          "text-xs font-semibold font-mono text-slate-300",
+                          item.isCompleted && "text-slate-500"
+                        )}>
+                          {formatCurrency(item.amount)}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (window.confirm('¿Eliminar este elemento?')) {
+                              deleteSpecialFundItem(item.id);
+                            }
+                          }}
+                          className="text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Add form */}
+          <form onSubmit={handleAddObligacionesItem} className="flex gap-2 mt-4 pt-4 border-t border-white/5 shrink-0">
+            <input
+              type="text"
+              placeholder="Ej: Seguro, Arriendo..."
+              value={obligacionesName}
+              onChange={e => setObligacionesName(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 flex-1 min-w-0"
+              required
+            />
+            <input
+              type="number"
+              placeholder="Valor"
+              value={obligacionesAmount}
+              onChange={e => setObligacionesAmount(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-20 font-mono"
+              required
+            />
+            <button
+              type="submit"
+              className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white p-2 rounded-xl transition-all flex items-center justify-center shrink-0"
+              title="Agregar"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </form>
         </div>
       </div>
     </div>

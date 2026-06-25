@@ -29,6 +29,15 @@ export interface AllocationRule {
   percentage: number;
 }
 
+export interface SpecialFundItem {
+  id: string;
+  fundType: 'Inversión' | 'Obligaciones';
+  name: string;
+  amount: number;
+  isCompleted: boolean;
+  createdAt?: string;
+}
+
 export interface FinanceData {
   transactions: Transaction[];
   budgets: Budget[];
@@ -37,6 +46,7 @@ export interface FinanceData {
     income: Category[];
     expense: Category[];
   };
+  specialFundItems: SpecialFundItem[];
 }
 
 export const DEFAULT_CATEGORIES: FinanceData['categories'] = {

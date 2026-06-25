@@ -35,3 +35,20 @@ ON transactions FOR ALL USING (auth.uid() = user_id);
 -- Políticas para presupuestos
 CREATE POLICY "Users can manage their own budgets" 
 ON budgets FOR ALL USING (auth.uid() = user_id);
+
+-- 3. Tabla de Elementos Especiales para Fondos (Inversión y Obligaciones)
+CREATE TABLE IF NOT EXISTS special_fund_items (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) NOT NULL DEFAULT auth.uid(),
+  fund_type TEXT NOT NULL CHECK (fund_type IN ('Inversión', 'Obligaciones')),
+  name TEXT NOT NULL,
+  amount DECIMAL(12, 2) NOT NULL,
+  is_completed BOOLEAN DEFAULT FALSE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Políticas de Seguridad para la tabla de elementos especiales
+ALTER TABLE special_fund_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own special fund items" 
+ON special_fund_items FOR ALL USING (auth.uid() = user_id);

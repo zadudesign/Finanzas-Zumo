@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { FinanceData, Transaction, Budget, Category, AllocationRule } from '../types';
+import type { FinanceData, Transaction, Budget, Category, AllocationRule, SpecialFundItem } from '../types';
 import { DEFAULT_CATEGORIES } from '../types';
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
 
@@ -15,6 +15,9 @@ interface FinanceContextType {
   addAllocation: (a: Omit<AllocationRule, 'id'>) => Promise<void>;
   deleteAllocation: (id: string) => Promise<void>;
   resetDatabase: () => Promise<void>;
+  addSpecialFundItem: (item: Omit<SpecialFundItem, 'id'>) => Promise<void>;
+  deleteSpecialFundItem: (id: string) => Promise<void>;
+  toggleSpecialFundItem: (id: string, isCompleted: boolean) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -30,7 +33,8 @@ const mockInitialData: FinanceData = {
     { id: '2', category: 'Alimentación', amount: 400000, month: new Date().toISOString().substring(0, 7) },
   ],
   allocations: [],
-  categories: DEFAULT_CATEGORIES
+  categories: DEFAULT_CATEGORIES,
+  specialFundItems: []
 };
 
 export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
@@ -51,7 +55,8 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       return {
         ...mockInitialData,
         ...parsed,
-        categories: migratedCategories || DEFAULT_CATEGORIES
+        categories: migratedCategories || DEFAULT_CATEGORIES,
+        specialFundItems: parsed.specialFundItems || []
       };
     }
     return mockInitialData;
@@ -84,12 +89,28 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
            return;
         }
         if (session) {
-          const [{ data: txs, error: txError }, { data: bgts, error: bgtError }, { data: cats, error: catError }, { data: allocs, error: allocsError }] = await Promise.all([
+          const [
+            { data: txs, error: txError },
+            { data: bgts, error: bgtError },
+            { data: cats, error: catError },
+            { data: allocs, error: allocsError },
+            sfResult
+          ] = await Promise.all([
             supabase.from('transactions').select('*').order('date', { ascending: false }),
             supabase.from('budgets').select('*'),
             supabase.from('categories').select('*'),
-            supabase.from('allocations').select('*')
+            supabase.from('allocations').select('*'),
+            (async () => {
+              try {
+                return await supabase.from('special_fund_items').select('*').order('created_at', { ascending: true });
+              } catch (err) {
+                return { data: null, error: err as any };
+              }
+            })()
           ]);
+
+          const sfItems = sfResult && 'data' in sfResult ? sfResult.data : null;
+          const sfError = sfResult && 'error' in sfResult ? sfResult.error : null;
 
           if (!txError && txs) {
             let cloudCategories = data.categories; 
@@ -116,11 +137,23 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
                }
             }
 
+            const cloudSFItems = !sfError && sfItems
+              ? sfItems.map((item: any) => ({
+                  id: item.id,
+                  fundType: item.fund_type,
+                  name: item.name,
+                  amount: Number(item.amount),
+                  isCompleted: item.is_completed,
+                  createdAt: item.created_at
+                })) as SpecialFundItem[]
+              : (data.specialFundItems || []);
+
             const cloudData = {
               transactions: txs ? txs.map((t: any) => ({ ...t, allocationFund: t.allocation_fund })) as Transaction[] : [],
               budgets: cloudBudgets,
               categories: cloudCategories,
-              allocations: cloudAllocations || []
+              allocations: cloudAllocations || [],
+              specialFundItems: cloudSFItems
             };
             setData(prev => ({ ...prev, ...cloudData }));
             localStorage.setItem('finance_data', JSON.stringify({ ...data, ...cloudData }));
@@ -323,12 +356,93 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   };
 
+  const addSpecialFundItem = async (item: Omit<SpecialFundItem, 'id'>) => {
+    const newItem: SpecialFundItem = { 
+      ...item, 
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString()
+    };
+    
+    setData(prev => ({ 
+      ...prev, 
+      specialFundItems: [...(prev.specialFundItems || []), newItem] 
+    }));
+
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { error } = await supabase
+            .from('special_fund_items')
+            .insert([{ 
+              id: newItem.id, 
+              user_id: session.user.id,
+              fund_type: item.fundType,
+              name: item.name,
+              amount: item.amount,
+              is_completed: item.isCompleted
+            }]);
+          if (error) throw error;
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (add special fund item):', error);
+      }
+    }
+  };
+
+  const deleteSpecialFundItem = async (id: string) => {
+    setData(prev => ({ 
+      ...prev, 
+      specialFundItems: (prev.specialFundItems || []).filter(item => item.id !== id) 
+    }));
+
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { error } = await supabase
+            .from('special_fund_items')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (delete special fund item):', error);
+      }
+    }
+  };
+
+  const toggleSpecialFundItem = async (id: string, isCompleted: boolean) => {
+    setData(prev => ({ 
+      ...prev, 
+      specialFundItems: (prev.specialFundItems || []).map(item => 
+        item.id === id ? { ...item, isCompleted } : item
+      ) 
+    }));
+
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { error } = await supabase
+            .from('special_fund_items')
+            .update({ is_completed: isCompleted })
+            .eq('id', id);
+          if (error) throw error;
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (toggle special fund item):', error);
+      }
+    }
+  };
+
   const resetDatabase = async () => {
     const emptyData = {
       transactions: [],
       budgets: [],
       allocations: [],
-      categories: { income: [], expense: [] }
+      categories: { income: [], expense: [] },
+      specialFundItems: []
     };
     setData(emptyData);
     localStorage.setItem('finance_data', JSON.stringify(emptyData));
@@ -341,7 +455,8 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
             supabase.from('transactions').delete().eq('user_id', session.user.id),
             supabase.from('categories').delete().eq('user_id', session.user.id),
             supabase.from('budgets').delete().eq('user_id', session.user.id),
-            supabase.from('allocations').delete().eq('user_id', session.user.id)
+            supabase.from('allocations').delete().eq('user_id', session.user.id),
+            supabase.from('special_fund_items').delete().eq('user_id', session.user.id)
           ]);
         }
       } catch (error) {
@@ -351,7 +466,22 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
   };
 
   return (
-    <FinanceContext.Provider value={{ data, isLoading, addTransaction, deleteTransaction, setBudget, deleteBudget, addCategory, deleteCategory, addAllocation, deleteAllocation, resetDatabase }}>
+    <FinanceContext.Provider value={{ 
+      data, 
+      isLoading, 
+      addTransaction, 
+      deleteTransaction, 
+      setBudget, 
+      deleteBudget, 
+      addCategory, 
+      deleteCategory, 
+      addAllocation, 
+      deleteAllocation, 
+      resetDatabase,
+      addSpecialFundItem,
+      deleteSpecialFundItem,
+      toggleSpecialFundItem
+    }}>
       {children}
     </FinanceContext.Provider>
   );

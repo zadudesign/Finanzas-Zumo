@@ -4,7 +4,7 @@ import { supabase, hasSupabaseConfig } from '../lib/supabase';
 import { 
   User, Database, ShieldCheck, Tag, Plus, Trash2, ArrowUpRight, ArrowDownRight,
   Wallet, TrendingUp, ShoppingBag, PlusCircle, Home, Utensils, Car, Activity, 
-  Play, Book, CreditCard, Coffee, Gift, Heart, Plane, Smartphone, Tool, Briefcase,
+  Play, Book, CreditCard, Coffee, Gift, Heart, Plane, Smartphone, Briefcase,
   Zap, DollarSign, PieChart, Search
 } from 'lucide-react';
 import * as Icons from 'lucide-react';
