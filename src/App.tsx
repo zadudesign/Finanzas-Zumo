@@ -7,7 +7,7 @@ import { Budgets } from './components/Budgets';
 import { Allocations } from './components/Allocations';
 import { Settings } from './components/Settings';
 import { Auth } from './components/Auth';
-import { supabase, hasSupabaseConfig } from './lib/supabase';
+import { supabase, hasSupabaseConfig, clearSupabaseKeys } from './lib/supabase';
 
 function Layout() {
   const [currentTab, setCurrentTab] = useState('dashboard');
@@ -18,9 +18,9 @@ function Layout() {
     if (hasSupabaseConfig) {
       supabase.auth.getSession().then(({ data: { session }, error }) => {
         if (error) {
-          if (error.message.includes('Refresh Token') || error.message.includes('not found')) {
+          if (error.message.includes('Refresh Token') || error.message.includes('not found') || error.message.includes('invalid')) {
             supabase.auth.signOut().catch(() => {});
-            localStorage.removeItem('supabase.auth.token');
+            clearSupabaseKeys();
           }
         } else {
           setSession(session);

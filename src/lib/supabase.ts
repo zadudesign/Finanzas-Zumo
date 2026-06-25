@@ -13,3 +13,20 @@ export const supabase = createClient(
 );
 
 export const hasSupabaseConfig = !!supabaseUrl && !!supabaseKey;
+
+export const clearSupabaseKeys = () => {
+  try {
+    localStorage.removeItem('supabase.auth.token');
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sb-') || key.includes('auth-token'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+  } catch (e) {
+    console.error('Error clearing localStorage:', e);
+  }
+};
+

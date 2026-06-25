@@ -196,7 +196,15 @@ export function Dashboard() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {allocationSummary.map((a, idx) => (
-              <div key={idx} className="bg-black/20 border border-white/5 rounded-2xl p-4 flex flex-col justify-between">
+              <div 
+                key={idx} 
+                className={cn(
+                  "border rounded-2xl p-4 flex flex-col justify-between transition-all duration-300",
+                  a.balance < 0 
+                    ? "bg-rose-500/15 border-rose-500/40 shadow-[0_0_15px_rgba(239,68,68,0.12)]" 
+                    : "bg-black/20 border-white/5"
+                )}
+              >
                  <div className="mb-2">
                    <div className="flex flex-wrap gap-1 mb-2">
                      {a.sources.map((s, i) => (

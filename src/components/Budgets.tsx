@@ -26,9 +26,9 @@ export function Budgets() {
   const [obligacionesName, setObligacionesName] = useState('');
   const [obligacionesAmount, setObligacionesAmount] = useState('');
 
-  // Sort states for Special Fund Items (default: 'amount' which is lowest to highest price)
-  const [inversionSort, setInversionSort] = useState<'amount' | 'alpha'>('amount');
-  const [obligacionesSort, setObligacionesSort] = useState<'amount' | 'alpha'>('amount');
+  // Sort states for Special Fund Items (default: 'amount_asc' which is lowest to highest price)
+  const [inversionSort, setInversionSort] = useState<'amount_asc' | 'amount_desc' | 'alpha'>('amount_asc');
+  const [obligacionesSort, setObligacionesSort] = useState<'amount_asc' | 'amount_desc' | 'alpha'>('amount_asc');
 
   useEffect(() => {
     if (hasSupabaseConfig) {
@@ -109,8 +109,10 @@ export function Budgets() {
 
   const inversionItems = useMemo(() => {
     const items = (data.specialFundItems || []).filter(item => item.fundType === 'Inversión');
-    if (inversionSort === 'amount') {
+    if (inversionSort === 'amount_asc') {
       return [...items].sort((a, b) => a.amount - b.amount);
+    } else if (inversionSort === 'amount_desc') {
+      return [...items].sort((a, b) => b.amount - a.amount);
     } else {
       return [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     }
@@ -118,8 +120,10 @@ export function Budgets() {
 
   const obligacionesItems = useMemo(() => {
     const items = (data.specialFundItems || []).filter(item => item.fundType === 'Obligaciones');
-    if (obligacionesSort === 'amount') {
+    if (obligacionesSort === 'amount_asc') {
       return [...items].sort((a, b) => a.amount - b.amount);
+    } else if (obligacionesSort === 'amount_desc') {
+      return [...items].sort((a, b) => b.amount - a.amount);
     } else {
       return [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     }
@@ -340,15 +344,27 @@ export function Budgets() {
                 <div className="flex gap-1">
                   <button
                     type="button"
-                    onClick={() => setInversionSort('amount')}
+                    onClick={() => setInversionSort('amount_asc')}
                     className={cn(
                       "text-[10px] px-2.5 py-1 rounded-lg transition-all font-semibold",
-                      inversionSort === 'amount'
+                      inversionSort === 'amount_asc'
                         ? "bg-indigo-500/30 text-indigo-300 border border-indigo-500/20 shadow-sm"
                         : "text-slate-400 hover:text-slate-200"
                     )}
                   >
                     Menor precio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInversionSort('amount_desc')}
+                    className={cn(
+                      "text-[10px] px-2.5 py-1 rounded-lg transition-all font-semibold",
+                      inversionSort === 'amount_desc'
+                        ? "bg-indigo-500/30 text-indigo-300 border border-indigo-500/20 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    Mayor precio
                   </button>
                   <button
                     type="button"
@@ -486,15 +502,27 @@ export function Budgets() {
                 <div className="flex gap-1">
                   <button
                     type="button"
-                    onClick={() => setObligacionesSort('amount')}
+                    onClick={() => setObligacionesSort('amount_asc')}
                     className={cn(
                       "text-[10px] px-2.5 py-1 rounded-lg transition-all font-semibold",
-                      obligacionesSort === 'amount'
+                      obligacionesSort === 'amount_asc'
                         ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/20 shadow-sm"
                         : "text-slate-400 hover:text-slate-200"
                     )}
                   >
                     Menor precio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setObligacionesSort('amount_desc')}
+                    className={cn(
+                      "text-[10px] px-2.5 py-1 rounded-lg transition-all font-semibold",
+                      obligacionesSort === 'amount_desc'
+                        ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/20 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    Mayor precio
                   </button>
                   <button
                     type="button"

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { FinanceData, Transaction, Budget, Category, AllocationRule, SpecialFundItem } from '../types';
 import { DEFAULT_CATEGORIES } from '../types';
-import { supabase, hasSupabaseConfig } from '../lib/supabase';
+import { supabase, hasSupabaseConfig, clearSupabaseKeys } from '../lib/supabase';
 
 interface FinanceContextType {
   data: FinanceData;
@@ -81,8 +81,9 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-           if (error.message.includes('Refresh Token') || error.message.includes('refresh_token_not_found')) {
-             await supabase.auth.signOut();
+           if (error.message.includes('Refresh Token') || error.message.includes('refresh_token_not_found') || error.message.includes('not found') || error.message.includes('invalid')) {
+             await supabase.auth.signOut().catch(() => {});
+             clearSupabaseKeys();
            }
            console.error('Session error:', error);
            setIsLoading(false);
