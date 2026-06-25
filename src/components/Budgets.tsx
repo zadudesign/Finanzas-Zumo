@@ -26,6 +26,10 @@ export function Budgets() {
   const [obligacionesName, setObligacionesName] = useState('');
   const [obligacionesAmount, setObligacionesAmount] = useState('');
 
+  // Sort states for Special Fund Items (default: 'amount' which is lowest to highest price)
+  const [inversionSort, setInversionSort] = useState<'amount' | 'alpha'>('amount');
+  const [obligacionesSort, setObligacionesSort] = useState<'amount' | 'alpha'>('amount');
+
   useEffect(() => {
     if (hasSupabaseConfig) {
       supabase.auth.getSession().then(({ data: { session }, error }) => {
@@ -104,12 +108,22 @@ export function Budgets() {
   };
 
   const inversionItems = useMemo(() => {
-    return (data.specialFundItems || []).filter(item => item.fundType === 'Inversión');
-  }, [data.specialFundItems]);
+    const items = (data.specialFundItems || []).filter(item => item.fundType === 'Inversión');
+    if (inversionSort === 'amount') {
+      return [...items].sort((a, b) => a.amount - b.amount);
+    } else {
+      return [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    }
+  }, [data.specialFundItems, inversionSort]);
 
   const obligacionesItems = useMemo(() => {
-    return (data.specialFundItems || []).filter(item => item.fundType === 'Obligaciones');
-  }, [data.specialFundItems]);
+    const items = (data.specialFundItems || []).filter(item => item.fundType === 'Obligaciones');
+    if (obligacionesSort === 'amount') {
+      return [...items].sort((a, b) => a.amount - b.amount);
+    } else {
+      return [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    }
+  }, [data.specialFundItems, obligacionesSort]);
 
   const totalInversionPlanned = useMemo(() => {
     return inversionItems.reduce((acc, item) => acc + item.amount, 0);
@@ -316,10 +330,40 @@ export function Budgets() {
             
             {/* Wishlist items to acquire */}
             <div className="mt-6 pt-6 border-t border-white/10">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex justify-between items-center">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
                 <span>Wishlist (Para Adquirir)</span>
                 <span className="text-indigo-400 font-mono text-[11px]">Total: {formatCurrency(totalInversionPlanned)}</span>
               </h4>
+              
+              <div className="flex items-center justify-between mb-4 bg-white/5 p-1 rounded-xl border border-white/5">
+                <span className="text-[10px] text-slate-400 font-medium pl-1.5">Ordenar por:</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setInversionSort('amount')}
+                    className={cn(
+                      "text-[10px] px-2.5 py-1 rounded-lg transition-all font-semibold",
+                      inversionSort === 'amount'
+                        ? "bg-indigo-500/30 text-indigo-300 border border-indigo-500/20 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    Menor precio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInversionSort('alpha')}
+                    className={cn(
+                      "text-[10px] px-2.5 py-1 rounded-lg transition-all font-semibold",
+                      inversionSort === 'alpha'
+                        ? "bg-indigo-500/30 text-indigo-300 border border-indigo-500/20 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    Nombre A-Z
+                  </button>
+                </div>
+              </div>
               
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {inversionItems.length === 0 ? (
@@ -432,10 +476,40 @@ export function Budgets() {
             
             {/* Obligation items to pay */}
             <div className="mt-6 pt-6 border-t border-white/10">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex justify-between items-center">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
                 <span>Obligaciones (Por Pagar)</span>
                 <span className="text-emerald-400 font-mono text-[11px]">Total: {formatCurrency(totalObligacionesPlanned)}</span>
               </h4>
+              
+              <div className="flex items-center justify-between mb-4 bg-white/5 p-1 rounded-xl border border-white/5">
+                <span className="text-[10px] text-slate-400 font-medium pl-1.5">Ordenar por:</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setObligacionesSort('amount')}
+                    className={cn(
+                      "text-[10px] px-2.5 py-1 rounded-lg transition-all font-semibold",
+                      obligacionesSort === 'amount'
+                        ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/20 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    Menor precio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setObligacionesSort('alpha')}
+                    className={cn(
+                      "text-[10px] px-2.5 py-1 rounded-lg transition-all font-semibold",
+                      obligacionesSort === 'alpha'
+                        ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/20 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    Nombre A-Z
+                  </button>
+                </div>
+              </div>
               
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {obligacionesItems.length === 0 ? (
