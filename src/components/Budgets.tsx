@@ -325,46 +325,65 @@ export function Budgets() {
                 {inversionItems.length === 0 ? (
                   <p className="text-xs text-slate-500 italic py-2 text-center">No hay elementos agregados aún.</p>
                 ) : (
-                  inversionItems.map(item => (
-                    <div key={item.id} className="flex items-center justify-between bg-white/5 hover:bg-white/10 p-2.5 rounded-xl border border-white/5 transition-all group">
-                      <button 
-                        type="button" 
-                        onClick={() => toggleSpecialFundItem(item.id, !item.isCompleted)}
-                        className="flex items-center gap-2.5 text-left flex-1 min-w-0"
-                      >
-                        {item.isCompleted ? (
-                          <CheckSquare className="w-4 h-4 text-indigo-400 shrink-0" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-500 shrink-0 hover:text-indigo-400 transition-colors" />
+                  inversionItems.map(item => {
+                    const isCoverable = item.amount <= specialFundsBalance.inversion;
+                    return (
+                      <div 
+                        key={item.id} 
+                        className={cn(
+                          "flex items-center justify-between p-2.5 rounded-xl border transition-all group",
+                          isCoverable && !item.isCompleted
+                            ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.06)]"
+                            : "bg-white/5 border-white/5 hover:bg-white/10"
                         )}
-                        <span className={cn(
-                          "text-xs font-medium text-slate-200 truncate",
-                          item.isCompleted && "line-through text-slate-500"
-                        )}>
-                          {item.name}
-                        </span>
-                      </button>
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        <span className={cn(
-                          "text-xs font-semibold font-mono text-slate-300",
-                          item.isCompleted && "text-slate-500"
-                        )}>
-                          {formatCurrency(item.amount)}
-                        </span>
-                        <button
-                          onClick={() => {
-                            if (window.confirm('¿Eliminar este elemento?')) {
-                              deleteSpecialFundItem(item.id);
-                            }
-                          }}
-                          className="text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
-                          title="Eliminar"
+                      >
+                        <button 
+                          type="button" 
+                          onClick={() => toggleSpecialFundItem(item.id, !item.isCompleted)}
+                          className="flex items-center gap-2.5 text-left flex-1 min-w-0"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          {item.isCompleted ? (
+                            <CheckSquare className="w-4 h-4 text-indigo-400 shrink-0" />
+                          ) : (
+                            <Square className={cn(
+                              "w-4 h-4 shrink-0 transition-colors",
+                              isCoverable ? "text-indigo-400/80 hover:text-indigo-400" : "text-slate-500 hover:text-indigo-400"
+                            )} />
+                          )}
+                          <span className={cn(
+                            "text-xs font-medium truncate",
+                            item.isCompleted ? "line-through text-slate-500" : "text-slate-200"
+                          )}>
+                            {item.name}
+                            {isCoverable && !item.isCompleted && (
+                              <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-normal">
+                                Cubrible
+                              </span>
+                            )}
+                          </span>
                         </button>
+                        <div className="flex items-center gap-3 shrink-0 ml-2">
+                          <span className={cn(
+                            "text-xs font-semibold font-mono",
+                            item.isCompleted ? "text-slate-500" : (isCoverable ? "text-indigo-300" : "text-slate-300")
+                          )}>
+                            {formatCurrency(item.amount)}
+                          </span>
+                          <button
+                            onClick={() => {
+                              if (window.confirm('¿Eliminar este elemento?')) {
+                                deleteSpecialFundItem(item.id);
+                              }
+                            }}
+                            className="text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -422,46 +441,65 @@ export function Budgets() {
                 {obligacionesItems.length === 0 ? (
                   <p className="text-xs text-slate-500 italic py-2 text-center">No hay elementos agregados aún.</p>
                 ) : (
-                  obligacionesItems.map(item => (
-                    <div key={item.id} className="flex items-center justify-between bg-white/5 hover:bg-white/10 p-2.5 rounded-xl border border-white/5 transition-all group">
-                      <button 
-                        type="button" 
-                        onClick={() => toggleSpecialFundItem(item.id, !item.isCompleted)}
-                        className="flex items-center gap-2.5 text-left flex-1 min-w-0"
-                      >
-                        {item.isCompleted ? (
-                          <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-500 shrink-0 hover:text-emerald-400 transition-colors" />
+                  obligacionesItems.map(item => {
+                    const isCoverable = item.amount <= specialFundsBalance.obligaciones;
+                    return (
+                      <div 
+                        key={item.id} 
+                        className={cn(
+                          "flex items-center justify-between p-2.5 rounded-xl border transition-all group",
+                          isCoverable && !item.isCompleted
+                            ? "bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.06)]"
+                            : "bg-white/5 border-white/5 hover:bg-white/10"
                         )}
-                        <span className={cn(
-                          "text-xs font-medium text-slate-200 truncate",
-                          item.isCompleted && "line-through text-slate-500"
-                        )}>
-                          {item.name}
-                        </span>
-                      </button>
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        <span className={cn(
-                          "text-xs font-semibold font-mono text-slate-300",
-                          item.isCompleted && "text-slate-500"
-                        )}>
-                          {formatCurrency(item.amount)}
-                        </span>
-                        <button
-                          onClick={() => {
-                            if (window.confirm('¿Eliminar este elemento?')) {
-                              deleteSpecialFundItem(item.id);
-                            }
-                          }}
-                          className="text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
-                          title="Eliminar"
+                      >
+                        <button 
+                          type="button" 
+                          onClick={() => toggleSpecialFundItem(item.id, !item.isCompleted)}
+                          className="flex items-center gap-2.5 text-left flex-1 min-w-0"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          {item.isCompleted ? (
+                            <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                          ) : (
+                            <Square className={cn(
+                              "w-4 h-4 shrink-0 transition-colors",
+                              isCoverable ? "text-emerald-400/80 hover:text-emerald-400" : "text-slate-500 hover:text-emerald-400"
+                            )} />
+                          )}
+                          <span className={cn(
+                            "text-xs font-medium truncate",
+                            item.isCompleted ? "line-through text-slate-500" : "text-slate-200"
+                          )}>
+                            {item.name}
+                            {isCoverable && !item.isCompleted && (
+                              <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-normal">
+                                Cubrible
+                              </span>
+                            )}
+                          </span>
                         </button>
+                        <div className="flex items-center gap-3 shrink-0 ml-2">
+                          <span className={cn(
+                            "text-xs font-semibold font-mono",
+                            item.isCompleted ? "text-slate-500" : (isCoverable ? "text-emerald-300" : "text-slate-300")
+                          )}>
+                            {formatCurrency(item.amount)}
+                          </span>
+                          <button
+                            onClick={() => {
+                              if (window.confirm('¿Eliminar este elemento?')) {
+                                deleteSpecialFundItem(item.id);
+                              }
+                            }}
+                            className="text-slate-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
