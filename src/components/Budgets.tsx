@@ -126,11 +126,11 @@ export function Budgets() {
   }, [data.specialFundItems, obligacionesSort]);
 
   const totalInversionPlanned = useMemo(() => {
-    return inversionItems.reduce((acc, item) => acc + item.amount, 0);
+    return inversionItems.reduce((acc, item) => acc + (item.isCompleted ? 0 : item.amount), 0);
   }, [inversionItems]);
 
   const totalObligacionesPlanned = useMemo(() => {
-    return obligacionesItems.reduce((acc, item) => acc + item.amount, 0);
+    return obligacionesItems.reduce((acc, item) => acc + (item.isCompleted ? 0 : item.amount), 0);
   }, [obligacionesItems]);
 
   const handleAddInversionItem = (e: React.FormEvent) => {
