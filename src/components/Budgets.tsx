@@ -333,7 +333,7 @@ export function Budgets() {
                         className={cn(
                           "flex items-center justify-between p-2.5 rounded-xl border transition-all group",
                           isCoverable && !item.isCompleted
-                            ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.06)]"
+                            ? "bg-indigo-500/25 border-indigo-400/80 shadow-[0_0_15px_rgba(99,102,241,0.25)]"
                             : "bg-white/5 border-white/5 hover:bg-white/10"
                         )}
                       >
@@ -347,16 +347,16 @@ export function Budgets() {
                           ) : (
                             <Square className={cn(
                               "w-4 h-4 shrink-0 transition-colors",
-                              isCoverable ? "text-indigo-400/80 hover:text-indigo-400" : "text-slate-500 hover:text-indigo-400"
+                              isCoverable ? "text-indigo-300 hover:text-indigo-100" : "text-slate-500 hover:text-indigo-400"
                             )} />
                           )}
                           <span className={cn(
                             "text-xs font-medium truncate",
-                            item.isCompleted ? "line-through text-slate-500" : "text-slate-200"
+                            item.isCompleted ? "line-through text-slate-500" : (isCoverable ? "text-white font-semibold" : "text-slate-200")
                           )}>
                             {item.name}
                             {isCoverable && !item.isCompleted && (
-                              <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-normal">
+                              <span className="ml-2 text-[9px] px-2 py-0.5 rounded-full bg-indigo-500 text-white font-bold tracking-wider uppercase border border-indigo-300/40">
                                 Cubrible
                               </span>
                             )}
@@ -365,7 +365,7 @@ export function Budgets() {
                         <div className="flex items-center gap-3 shrink-0 ml-2">
                           <span className={cn(
                             "text-xs font-semibold font-mono",
-                            item.isCompleted ? "text-slate-500" : (isCoverable ? "text-indigo-300" : "text-slate-300")
+                            item.isCompleted ? "text-slate-500" : (isCoverable ? "text-indigo-200 font-bold" : "text-slate-300")
                           )}>
                             {formatCurrency(item.amount)}
                           </span>
@@ -449,7 +449,7 @@ export function Budgets() {
                         className={cn(
                           "flex items-center justify-between p-2.5 rounded-xl border transition-all group",
                           isCoverable && !item.isCompleted
-                            ? "bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.06)]"
+                            ? "bg-emerald-500/25 border-emerald-400/80 shadow-[0_0_15px_rgba(16,185,129,0.25)]"
                             : "bg-white/5 border-white/5 hover:bg-white/10"
                         )}
                       >
@@ -463,16 +463,16 @@ export function Budgets() {
                           ) : (
                             <Square className={cn(
                               "w-4 h-4 shrink-0 transition-colors",
-                              isCoverable ? "text-emerald-400/80 hover:text-emerald-400" : "text-slate-500 hover:text-emerald-400"
+                              isCoverable ? "text-emerald-300 hover:text-emerald-100" : "text-slate-500 hover:text-emerald-400"
                             )} />
                           )}
                           <span className={cn(
                             "text-xs font-medium truncate",
-                            item.isCompleted ? "line-through text-slate-500" : "text-slate-200"
+                            item.isCompleted ? "line-through text-slate-500" : (isCoverable ? "text-white font-semibold" : "text-slate-200")
                           )}>
                             {item.name}
                             {isCoverable && !item.isCompleted && (
-                              <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-normal">
+                              <span className="ml-2 text-[9px] px-2 py-0.5 rounded-full bg-emerald-500 text-white font-bold tracking-wider uppercase border border-emerald-300/40">
                                 Cubrible
                               </span>
                             )}
@@ -481,7 +481,7 @@ export function Budgets() {
                         <div className="flex items-center gap-3 shrink-0 ml-2">
                           <span className={cn(
                             "text-xs font-semibold font-mono",
-                            item.isCompleted ? "text-slate-500" : (isCoverable ? "text-emerald-300" : "text-slate-300")
+                            item.isCompleted ? "text-slate-500" : (isCoverable ? "text-emerald-200 font-bold" : "text-slate-300")
                           )}>
                             {formatCurrency(item.amount)}
                           </span>
