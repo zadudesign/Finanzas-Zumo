@@ -81,7 +81,8 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-           if (error.message.includes('Refresh Token') || error.message.includes('refresh_token_not_found') || error.message.includes('not found') || error.message.includes('invalid')) {
+           const errMsg = (error.message || '').toLowerCase();
+           if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
              await supabase.auth.signOut().catch(() => {});
              clearSupabaseKeys();
            }

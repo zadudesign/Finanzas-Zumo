@@ -166,7 +166,7 @@ export function Transactions() {
               className="w-40 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
             >
               <option value="" className="bg-slate-800">Todas</option>
-              {[...data.categories.expense, ...data.categories.income].map(cat => (
+              {Array.from(new Map([...data.categories.expense, ...data.categories.income].map(c => [c.name, c])).values()).map(cat => (
                 <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
               ))}
             </select>

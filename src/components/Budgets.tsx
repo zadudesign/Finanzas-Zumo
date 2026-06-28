@@ -3,7 +3,7 @@ import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
 import { Target, Tag, HelpCircle, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import { LucideIcon } from './Settings';
-import { supabase, hasSupabaseConfig } from '../lib/supabase';
+import { supabase, hasSupabaseConfig, clearSupabaseKeys } from '../lib/supabase';
 
 export function Budgets() {
   const { 
@@ -33,8 +33,15 @@ export function Budgets() {
   useEffect(() => {
     if (hasSupabaseConfig) {
       supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error && error.message?.includes('Refresh Token')) supabase.auth.signOut();
-        else setSession(session);
+        if (error) {
+          const errMsg = (error.message || '').toLowerCase();
+          if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
+            supabase.auth.signOut().catch(() => {});
+            clearSupabaseKeys();
+          }
+        } else {
+          setSession(session);
+        }
       }).catch(() => {});
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
       return () => subscription.unsubscribe();

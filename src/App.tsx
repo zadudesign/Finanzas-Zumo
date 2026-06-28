@@ -18,7 +18,8 @@ function Layout() {
     if (hasSupabaseConfig) {
       supabase.auth.getSession().then(({ data: { session }, error }) => {
         if (error) {
-          if (error.message.includes('Refresh Token') || error.message.includes('not found') || error.message.includes('invalid')) {
+          const errMsg = (error.message || '').toLowerCase();
+          if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
             supabase.auth.signOut().catch(() => {});
             clearSupabaseKeys();
           }

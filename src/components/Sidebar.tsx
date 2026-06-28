@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Home, PieChart, Receipt, Settings, Wallet, LogOut, Database, CloudOff, LayoutGrid } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { supabase, hasSupabaseConfig } from '../lib/supabase';
+import { supabase, hasSupabaseConfig, clearSupabaseKeys } from '../lib/supabase';
 
 interface SidebarProps {
   currentTab: string;
@@ -14,8 +14,15 @@ export function Sidebar({ currentTab, setCurrentTab, onShowAuth }: SidebarProps 
   useEffect(() => {
     if (hasSupabaseConfig) {
       supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error && error.message?.includes('Refresh Token')) supabase.auth.signOut();
-        else setSession(session);
+        if (error) {
+          const errMsg = (error.message || '').toLowerCase();
+          if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
+            supabase.auth.signOut().catch(() => {});
+            clearSupabaseKeys();
+          }
+        } else {
+          setSession(session);
+        }
       }).catch(() => {});
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
       return () => subscription.unsubscribe();
