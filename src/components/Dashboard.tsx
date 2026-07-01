@@ -257,7 +257,9 @@ export function Dashboard() {
                   "border rounded-2xl p-4 flex flex-col justify-between transition-all duration-300",
                   a.balance < 0 
                     ? "bg-rose-500/15 border-rose-500/40 shadow-[0_0_15px_rgba(239,68,68,0.12)]" 
-                    : "bg-black/20 border-white/5"
+                    : Math.abs(a.balance) < 0.01
+                      ? "bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.12)]"
+                      : "bg-black/20 border-white/5"
                 )}
               >
                  <div className="mb-2">
