@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
 import { LayoutGrid, Plus, Trash2, PieChart, Coins } from 'lucide-react';
@@ -6,7 +6,19 @@ import { LucideIcon } from './Settings';
 
 export function Allocations() {
   const { data, addAllocation, deleteAllocation } = useFinance();
-  const [selectedIncomeCat, setSelectedIncomeCat] = useState(data.categories.income[0]?.name || '');
+
+  const sortedIncomeCategories = useMemo(() => {
+    return [...data.categories.income].sort((a, b) => a.name.localeCompare(b.name));
+  }, [data.categories.income]);
+
+  const [selectedIncomeCat, setSelectedIncomeCat] = useState('');
+
+  useEffect(() => {
+    if (sortedIncomeCategories.length > 0 && (!selectedIncomeCat || !sortedIncomeCategories.some(c => c.name === selectedIncomeCat))) {
+      setSelectedIncomeCat(sortedIncomeCategories[0].name);
+    }
+  }, [sortedIncomeCategories, selectedIncomeCat]);
+
   const [fundName, setFundName] = useState('');
   const [percentage, setPercentage] = useState('');
 
@@ -72,7 +84,7 @@ export function Allocations() {
                 onChange={(e) => setSelectedIncomeCat(e.target.value)}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none appearance-none"
               >
-                {data.categories.income.map(cat => (
+                {sortedIncomeCategories.map(cat => (
                   <option key={cat.name} value={cat.name} className="bg-slate-900 text-slate-200">
                     {cat.name}
                   </option>

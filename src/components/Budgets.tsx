@@ -5,6 +5,21 @@ import { Target, Tag, HelpCircle, Plus, Trash2, CheckSquare, Square } from 'luci
 import { LucideIcon } from './Settings';
 import { supabase, hasSupabaseConfig, clearSupabaseKeys } from '../lib/supabase';
 
+function formatMonthYear(monthStr: string) {
+  if (monthStr === 'all') return 'Todos los meses';
+  if (!monthStr || monthStr.length < 7) return monthStr;
+  const [year, month] = monthStr.split('-');
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  const monthIndex = parseInt(month, 10) - 1;
+  if (monthIndex >= 0 && monthIndex < 12) {
+    return `${monthNames[monthIndex]} ${year}`;
+  }
+  return monthStr;
+}
+
 export function Budgets() {
   const { 
     data, 
@@ -14,10 +29,44 @@ export function Budgets() {
     deleteSpecialFundItem, 
     toggleSpecialFundItem 
   } = useFinance();
-  const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return new Date().toISOString().substring(0, 7);
+  });
+
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    const currentMonthStr = new Date().toISOString().substring(0, 7);
+    monthsSet.add(currentMonthStr);
+    
+    data.transactions.forEach(t => {
+      if (t.date && t.date.length >= 7) {
+        monthsSet.add(t.date.substring(0, 7));
+      }
+    });
+
+    data.budgets.forEach(b => {
+      if (b.month && b.month.length >= 7) {
+        monthsSet.add(b.month);
+      }
+    });
+    
+    return Array.from(monthsSet).sort().reverse();
+  }, [data.transactions, data.budgets]);
+
   const [session, setSession] = useState<any>(null);
   
-  const [category, setCategory] = useState(data.categories.expense[0]?.name || '');
+  const sortedExpenseCategories = useMemo(() => {
+    return [...data.categories.expense].sort((a, b) => a.name.localeCompare(b.name));
+  }, [data.categories.expense]);
+
+  const [category, setCategory] = useState('');
+
+  useEffect(() => {
+    if (sortedExpenseCategories.length > 0 && (!category || !sortedExpenseCategories.some(c => c.name === category))) {
+      setCategory(sortedExpenseCategories[0].name);
+    }
+  }, [sortedExpenseCategories, category]);
+
   const [amount, setAmount] = useState('');
 
   // Form states for Special Fund Items
@@ -53,33 +102,40 @@ export function Budgets() {
     const expensesByCategory: Record<string, number> = {};
     
     data.transactions.forEach(t => {
-      if (t.type === 'expense' && t.date.startsWith(currentMonth)) {
+      if (t.type === 'expense' && (selectedMonth === 'all' || t.date.startsWith(selectedMonth))) {
         expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
       }
     });
 
     return data.budgets
-      .filter(b => b.month === currentMonth)
+      .filter(b => selectedMonth === 'all' || b.month === selectedMonth)
       .map(b => {
-        const spent = expensesByCategory[b.category] || 0;
+        let spent = 0;
+        if (selectedMonth === 'all') {
+          spent = data.transactions
+            .filter(t => t.type === 'expense' && t.category === b.category && t.date.startsWith(b.month))
+            .reduce((sum, t) => sum + t.amount, 0);
+        } else {
+          spent = expensesByCategory[b.category] || 0;
+        }
         const percentage = Math.min((spent / b.amount) * 100, 100);
         return { ...b, spent, percentage };
       })
-      .sort((a, b) => a.category.localeCompare(b.category));
-  }, [data.transactions, data.budgets, currentMonth]);
+      .sort((a, b) => a.category.localeCompare(b.category) || a.month.localeCompare(b.month));
+  }, [data.transactions, data.budgets, selectedMonth]);
 
   const totalBudgetAmount = useMemo(() => {
     return data.budgets
-      .filter(b => b.month === currentMonth)
+      .filter(b => selectedMonth === 'all' || b.month === selectedMonth)
       .reduce((sum, b) => sum + b.amount, 0);
-  }, [data.budgets, currentMonth]);
+  }, [data.budgets, selectedMonth]);
 
   const specialFundsBalance = useMemo(() => {
     const incomeByCat: Record<string, number> = {};
     const fundExpenses: Record<string, number> = {};
     
     data.transactions.forEach(t => {
-      if (t.date.startsWith(currentMonth)) {
+      if (selectedMonth === 'all' || t.date.startsWith(selectedMonth)) {
         if (t.type === 'income') {
           incomeByCat[t.category] = (incomeByCat[t.category] || 0) + t.amount;
         } else if (t.type === 'expense' && t.allocationFund) {
@@ -105,12 +161,13 @@ export function Budgets() {
       inversion: inversionAssigned - inversionConsumed,
       obligaciones: obligacionesAssigned - obligacionesConsumed
     };
-  }, [data.transactions, data.allocations, currentMonth]);
+  }, [data.transactions, data.allocations, selectedMonth]);
 
   const handleSubmitBudget = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount)) || !category) return;
-    setBudget({ category, amount: Number(amount), month: currentMonth });
+    const targetMonth = selectedMonth === 'all' ? new Date().toISOString().substring(0, 7) : selectedMonth;
+    setBudget({ category, amount: Number(amount), month: targetMonth });
     setAmount('');
   };
 
@@ -172,8 +229,22 @@ export function Budgets() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight text-white">Gestión de Presupuesto</h1>
+        
+        <div className="flex items-center gap-3">
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Mes de análisis:</label>
+          <select 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-white/10 transition-colors"
+          >
+            <option value="all" className="bg-slate-800">Todos los meses</option>
+            {availableMonths.map(month => (
+              <option key={month} value={month} className="bg-slate-800">{formatMonthYear(month)}</option>
+            ))}
+          </select>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -198,7 +269,7 @@ export function Budgets() {
                   required
                 >
                   <option value="" disabled className="bg-slate-800">Seleccionar...</option>
-                  {data.categories.expense.map(cat => (
+                  {sortedExpenseCategories.map(cat => (
                     <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
                   ))}
                 </select>
@@ -227,8 +298,8 @@ export function Budgets() {
         <div className={cn("space-y-4", session ? "lg:col-span-8" : "lg:col-span-12")}>
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
             <div>
-              <h3 className="text-base font-bold text-white uppercase tracking-wider opacity-60">Monitoreo Mes Actual</h3>
-              <span className="text-xs bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30 inline-block mt-2">{currentMonth}</span>
+              <h3 className="text-base font-bold text-white uppercase tracking-wider opacity-60">Monitoreo de Presupuesto</h3>
+              <span className="text-xs bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30 inline-block mt-2">{formatMonthYear(selectedMonth)}</span>
             </div>
             <div className="md:text-right">
               <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Presupuesto Mensual Total</p>

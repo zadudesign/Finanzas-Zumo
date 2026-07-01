@@ -41,7 +41,9 @@ export function Transactions() {
   const [filterFund, setFilterFund] = useState('');
 
   // Get unique fund names
-  const uniqueFunds = Array.from(new Set(data.allocations.map(a => a.fundName.trim())));
+  const uniqueFunds = useMemo(() => {
+    return Array.from(new Set(data.allocations.map(a => a.fundName.trim()))).sort((a, b) => (a as string).localeCompare(b as string));
+  }, [data.allocations]);
 
   const availableMonths = useMemo(() => {
     const monthsSet = new Set<string>();
@@ -113,7 +115,8 @@ export function Transactions() {
               onChange={(e) => {
                 const t = e.target.value as TransactionType;
                 setType(t);
-                setCategory(data.categories[t][0]?.name || '');
+                const sorted = [...data.categories[t]].sort((a, b) => a.name.localeCompare(b.name));
+                setCategory(sorted[0]?.name || '');
               }}
               className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
             >
@@ -142,7 +145,7 @@ export function Transactions() {
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
               >
                 <option value="" className="bg-slate-800">Ninguno</option>
-                {data.categories[type].map(cat => (
+                {[...data.categories[type]].sort((a, b) => a.name.localeCompare(b.name)).map(cat => (
                   <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
                 ))}
               </select>
@@ -218,9 +221,12 @@ export function Transactions() {
               className="w-40 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
             >
               <option value="" className="bg-slate-800">Todas</option>
-              {Array.from(new Map([...data.categories.expense, ...data.categories.income].map(c => [c.name, c])).values()).map(cat => (
-                <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
-              ))}
+              {Array.from(new Map([...data.categories.expense, ...data.categories.income].map(c => [c.name, c])).values())
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(cat => (
+                  <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
+                ))
+              }
             </select>
           </div>
           
