@@ -135,6 +135,11 @@ export function Transactions() {
               placeholder="0.00"
               className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors placeholder-slate-600"
             />
+            {amount && !isNaN(Number(amount)) && Number(amount) > 0 && (
+              <div className="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20 font-mono tracking-wide mt-1 animate-pulse">
+                {formatCurrency(Number(amount))} COP
+              </div>
+            )}
           </div>
 
           <div className="space-y-2 lg:col-span-1">

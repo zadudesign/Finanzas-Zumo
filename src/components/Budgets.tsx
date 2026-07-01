@@ -266,6 +266,11 @@ export function Budgets() {
                   placeholder="0.00"
                   className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors placeholder-slate-600"
                 />
+                {amount && !isNaN(Number(amount)) && Number(amount) > 0 && (
+                  <div className="text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-1.5 rounded-lg border border-indigo-500/20 font-mono tracking-wide mt-1 animate-pulse">
+                    {formatCurrency(Number(amount))} COP
+                  </div>
+                )}
               </div>
 
               <button type="submit" className="w-full py-3 bg-indigo-500 text-white rounded-xl text-sm font-bold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
