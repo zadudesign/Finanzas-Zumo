@@ -6,6 +6,8 @@ import { supabase, hasSupabaseConfig, clearSupabaseKeys } from '../lib/supabase'
 interface FinanceContextType {
   data: FinanceData;
   isLoading: boolean;
+  session: any;
+  setSession: React.Dispatch<React.SetStateAction<any>>;
   addTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   setBudget: (b: Omit<Budget, 'id'>) => Promise<void>;
@@ -63,11 +65,13 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
   });
   const [isLoading, setIsLoading] = useState(true);
 
+  const [session, setSession] = useState<any>(null);
+
   useEffect(() => {
     localStorage.setItem('finance_data', JSON.stringify(data));
   }, [data]);
 
-  const loadData = async () => {
+  const loadData = async (passedSession?: any) => {
     setIsLoading(true);
     
     // 1. Cargar desde LocalStorage primero para velocidad instantánea
@@ -79,18 +83,23 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     // 2. Si Supabase está configurado, intentar traer datos frescos
     if (hasSupabaseConfig) {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-           const errMsg = (error.message || '').toLowerCase();
-           if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
-             await supabase.auth.signOut().catch(() => {});
-             clearSupabaseKeys();
-           }
-           console.error('Session error:', error);
-           setIsLoading(false);
-           return;
+        let activeSession = passedSession;
+        if (!activeSession) {
+          const { data: { session: fetchedSession }, error } = await supabase.auth.getSession();
+          if (error) {
+             const errMsg = (error.message || '').toLowerCase();
+             if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
+               await supabase.auth.signOut().catch(() => {});
+               clearSupabaseKeys();
+             }
+             console.error('Session error:', error);
+             setIsLoading(false);
+             return;
+          }
+          activeSession = fetchedSession;
         }
-        if (session) {
+
+        if (activeSession) {
           const [
             { data: txs, error: txError },
             { data: bgts, error: bgtError },
@@ -169,7 +178,58 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
   };
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    
+    const checkAuthAndLoad = async () => {
+      if (hasSupabaseConfig) {
+        try {
+          const { data: { session: initSession }, error } = await supabase.auth.getSession();
+          if (error) {
+            const errMsg = (error.message || '').toLowerCase();
+            if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
+              await supabase.auth.signOut().catch(() => {});
+              clearSupabaseKeys();
+            }
+            if (isMounted) {
+              setSession(null);
+              await loadData(null);
+            }
+          } else {
+            if (isMounted) {
+              setSession(initSession);
+              await loadData(initSession);
+            }
+          }
+        } catch (e) {
+          console.error('Auth check error:', e);
+          if (isMounted) await loadData(null);
+        }
+      } else {
+        if (isMounted) await loadData(null);
+      }
+    };
+
+    checkAuthAndLoad();
+
+    let subscription: any;
+    if (hasSupabaseConfig) {
+      const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+        if (isMounted) {
+          setSession(currentSession);
+          if (currentSession) {
+            loadData(currentSession);
+          }
+        }
+      });
+      subscription = data.subscription;
+    }
+
+    return () => {
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const addTransaction = async (t: Omit<Transaction, 'id'>) => {
@@ -471,6 +531,8 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     <FinanceContext.Provider value={{ 
       data, 
       isLoading, 
+      session,
+      setSession,
       addTransaction, 
       deleteTransaction, 
       setBudget, 

@@ -39,28 +39,11 @@ export function LucideIcon({ name, className }: { name: string, className?: stri
 }
 
 export function Settings() {
-  const { data, addCategory, deleteCategory, resetDatabase } = useFinance();
-  const [session, setSession] = useState<any>(null);
+  const { data, session, addCategory, deleteCategory, resetDatabase } = useFinance();
   const [newCatName, setNewCatName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('Tag');
   const [activeCatType, setActiveCatType] = useState<'income' | 'expense'>('expense');
   const [showIconPicker, setShowIconPicker] = useState(false);
-
-  useEffect(() => {
-    if (hasSupabaseConfig) {
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) {
-          const errMsg = (error.message || '').toLowerCase();
-          if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
-            supabase.auth.signOut().catch(() => {});
-            clearSupabaseKeys();
-          }
-        } else {
-          setSession(session);
-        }
-      }).catch(() => {});
-    }
-  }, []);
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();

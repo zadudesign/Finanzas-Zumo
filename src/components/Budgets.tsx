@@ -23,6 +23,7 @@ function formatMonthYear(monthStr: string) {
 export function Budgets() {
   const { 
     data, 
+    session,
     setBudget, 
     deleteBudget, 
     addSpecialFundItem, 
@@ -52,8 +53,6 @@ export function Budgets() {
     
     return Array.from(monthsSet).sort().reverse();
   }, [data.transactions, data.budgets]);
-
-  const [session, setSession] = useState<any>(null);
   
   const sortedExpenseCategories = useMemo(() => {
     return [...data.categories.expense].sort((a, b) => a.name.localeCompare(b.name));
@@ -78,24 +77,6 @@ export function Budgets() {
   // Sort states for Special Fund Items (default: 'amount_asc' which is lowest to highest price)
   const [inversionSort, setInversionSort] = useState<'amount_asc' | 'amount_desc' | 'alpha'>('amount_asc');
   const [obligacionesSort, setObligacionesSort] = useState<'amount_asc' | 'amount_desc' | 'alpha'>('amount_asc');
-
-  useEffect(() => {
-    if (hasSupabaseConfig) {
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) {
-          const errMsg = (error.message || '').toLowerCase();
-          if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
-            supabase.auth.signOut().catch(() => {});
-            clearSupabaseKeys();
-          }
-        } else {
-          setSession(session);
-        }
-      }).catch(() => {});
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-      return () => subscription.unsubscribe();
-    }
-  }, []);
 
   // Transform data to calculate spending per budget
   const budgetProgress = useMemo(() => {

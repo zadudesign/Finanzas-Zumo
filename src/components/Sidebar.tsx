@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Home, PieChart, Receipt, Settings, Wallet, LogOut, Database, CloudOff, LayoutGrid } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase, hasSupabaseConfig, clearSupabaseKeys } from '../lib/supabase';
+import { useFinance } from '../context/FinanceContext';
 
 interface SidebarProps {
   currentTab: string;
@@ -9,25 +10,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentTab, setCurrentTab, onShowAuth }: SidebarProps & { onShowAuth: () => void }) {
-  const [session, setSession] = useState<any>(null);
-
-  useEffect(() => {
-    if (hasSupabaseConfig) {
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) {
-          const errMsg = (error.message || '').toLowerCase();
-          if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
-            supabase.auth.signOut().catch(() => {});
-            clearSupabaseKeys();
-          }
-        } else {
-          setSession(session);
-        }
-      }).catch(() => {});
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-      return () => subscription.unsubscribe();
-    }
-  }, []);
+  const { session } = useFinance();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -94,7 +77,10 @@ export function Sidebar({ currentTab, setCurrentTab, onShowAuth }: SidebarProps 
         </button>
         {session ? (
           <button 
-            onClick={() => supabase.auth.signOut()}
+            onClick={() => {
+              supabase.auth.signOut().catch(() => {});
+              clearSupabaseKeys();
+            }}
             className="flex items-center w-full px-4 py-3 rounded-xl text-sm font-medium text-rose-400/80 hover:text-white hover:bg-rose-500/20 transition-colors"
           >
             <LogOut className="w-5 h-5 mr-3 opacity-80" />

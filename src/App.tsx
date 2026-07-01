@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FinanceProvider } from './context/FinanceContext';
+import React, { useState } from 'react';
+import { FinanceProvider, useFinance } from './context/FinanceContext';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/Transactions';
@@ -7,36 +7,12 @@ import { Budgets } from './components/Budgets';
 import { Allocations } from './components/Allocations';
 import { Settings } from './components/Settings';
 import { Auth } from './components/Auth';
-import { supabase, hasSupabaseConfig, clearSupabaseKeys } from './lib/supabase';
+import { hasSupabaseConfig } from './lib/supabase';
 
 function Layout() {
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [showAuth, setShowAuth] = useState(false);
-  const [session, setSession] = useState<any>(null);
-
-  useEffect(() => {
-    if (hasSupabaseConfig) {
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) {
-          const errMsg = (error.message || '').toLowerCase();
-          if (errMsg.includes('refresh token') || errMsg.includes('not found') || errMsg.includes('invalid') || errMsg.includes('expired')) {
-            supabase.auth.signOut().catch(() => {});
-            clearSupabaseKeys();
-          }
-        } else {
-          setSession(session);
-        }
-      }).catch(() => {});
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT') {
-           setSession(null);
-        } else if (session) {
-           setSession(session);
-        }
-      });
-      return () => subscription.unsubscribe();
-    }
-  }, []);
+  const { session } = useFinance();
 
   // Si no hay sesión y el usuario hace clic en "Vincular", mostramos el Auth
   if (showAuth && !session) {
