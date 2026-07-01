@@ -1,10 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionType } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
 
 import { LucideIcon } from './Settings';
+
+function formatMonthYear(monthStr: string) {
+  if (monthStr === 'all') return 'Todos los meses';
+  if (!monthStr || monthStr.length < 7) return monthStr;
+  const [year, month] = monthStr.split('-');
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  const monthIndex = parseInt(month, 10) - 1;
+  if (monthIndex >= 0 && monthIndex < 12) {
+    return `${monthNames[monthIndex]} ${year}`;
+  }
+  return monthStr;
+}
 
 export function Transactions() {
   const { data, addTransaction, deleteTransaction } = useFinance();
@@ -19,20 +34,43 @@ export function Transactions() {
   const [allocationFund, setAllocationFund] = useState('');
 
   // Filter state
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return new Date().toISOString().substring(0, 7);
+  });
   const [filterCategory, setFilterCategory] = useState('');
   const [filterFund, setFilterFund] = useState('');
 
   // Get unique fund names
   const uniqueFunds = Array.from(new Set(data.allocations.map(a => a.fundName.trim())));
 
-  const filteredTransactions = [...data.transactions]
-    .filter(t => {
-      const matchCategory = filterCategory === '' || t.category === filterCategory;
-      const matchFund = filterFund === '' || t.allocationFund === filterFund;
-      return matchCategory && matchFund;
-    })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const filterTotal = (filterCategory || filterFund) ? filteredTransactions.reduce((acc, t) => acc + t.amount, 0) : 0;
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    monthsSet.add(currentMonth);
+    
+    data.transactions.forEach(t => {
+      if (t.date && t.date.length >= 7) {
+        monthsSet.add(t.date.substring(0, 7));
+      }
+    });
+    
+    return Array.from(monthsSet).sort().reverse();
+  }, [data.transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    return [...data.transactions]
+      .filter(t => {
+        const matchMonth = selectedMonth === 'all' || t.date.startsWith(selectedMonth);
+        const matchCategory = filterCategory === '' || t.category === filterCategory;
+        const matchFund = filterFund === '' || t.allocationFund === filterFund;
+        return matchMonth && matchCategory && matchFund;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [data.transactions, selectedMonth, filterCategory, filterFund]);
+
+  const filterTotal = useMemo(() => {
+    return (selectedMonth || filterCategory || filterFund) ? filteredTransactions.reduce((acc, t) => acc + t.amount, 0) : 0;
+  }, [filteredTransactions, selectedMonth, filterCategory, filterFund]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +196,20 @@ export function Transactions() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Mes:</label>
+            <select 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-40 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
+            >
+              <option value="all" className="bg-slate-800">Todos</option>
+              {availableMonths.map(month => (
+                <option key={month} value={month} className="bg-slate-800">{formatMonthYear(month)}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-center gap-3">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Categoría:</label>
             <select 

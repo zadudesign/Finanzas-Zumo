@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
@@ -6,16 +6,51 @@ import { AlertCircle, ArrowDownRight, ArrowUpRight, DollarSign, LayoutGrid } fro
 
 import { LucideIcon } from './Settings';
 
+function formatMonthYear(monthStr: string) {
+  if (monthStr === 'all') return 'Todos los meses';
+  if (!monthStr || monthStr.length < 7) return monthStr;
+  const [year, month] = monthStr.split('-');
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  const monthIndex = parseInt(month, 10) - 1;
+  if (monthIndex >= 0 && monthIndex < 12) {
+    return `${monthNames[monthIndex]} ${year}`;
+  }
+  return monthStr;
+}
+
 export function Dashboard() {
   const { data } = useFinance();
+
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return new Date().toISOString().substring(0, 7);
+  });
+
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    monthsSet.add(currentMonth);
+    
+    data.transactions.forEach(t => {
+      if (t.date && t.date.length >= 7) {
+        monthsSet.add(t.date.substring(0, 7));
+      }
+    });
+    
+    return Array.from(monthsSet).sort().reverse();
+  }, [data.transactions]);
 
   const metrics = useMemo(() => {
     let totalIncome = 0;
     let totalExpense = 0;
     
     data.transactions.forEach(t => {
-      if (t.type === 'income') totalIncome += t.amount;
-      if (t.type === 'expense') totalExpense += t.amount;
+      if (selectedMonth === 'all' || t.date.startsWith(selectedMonth)) {
+        if (t.type === 'income') totalIncome += t.amount;
+        if (t.type === 'expense') totalExpense += t.amount;
+      }
     });
 
     return {
@@ -23,69 +58,73 @@ export function Dashboard() {
       income: totalIncome,
       expense: totalExpense,
     };
-  }, [data.transactions]);
+  }, [data.transactions, selectedMonth]);
 
   // Transformar datos para el gráfico mensual (simplificado para el prototipo asumiendo ingresos del mes actual)
   const chartData = useMemo(() => {
     const grouped: Record<string, { income: number, expense: number }> = {};
     
-    // Simplificación: agrupar por los últimos 7 días con actividad
     data.transactions.forEach(t => {
-      if (!grouped[t.date]) {
-        grouped[t.date] = { income: 0, expense: 0 };
+      if (selectedMonth === 'all' || t.date.startsWith(selectedMonth)) {
+        if (!grouped[t.date]) {
+          grouped[t.date] = { income: 0, expense: 0 };
+        }
+        grouped[t.date][t.type] += t.amount;
       }
-      grouped[t.date][t.type] += t.amount;
     });
 
-    return Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-7) // últimos 7 días con datos
-      .map(([date, values]) => ({
-        name: date.split('-').slice(1).join('/'), // MM/DD
-        Ingresos: values.income,
-        Gastos: values.expense,
-      }));
-  }, [data.transactions]);
+    const entries = Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    // Si mostramos todos los meses, limitar a los últimos 15 días con datos para que no se sature el gráfico, de lo contrario mostrar todos los días de ese mes
+    const finalEntries = selectedMonth === 'all' ? entries.slice(-15) : entries;
+
+    return finalEntries.map(([date, values]) => ({
+      name: date.split('-').slice(1).join('/'), // MM/DD
+      Ingresos: values.income,
+      Gastos: values.expense,
+    }));
+  }, [data.transactions, selectedMonth]);
 
   // Alertas de presupuesto
   const alerts = useMemo(() => {
     const currentMonth = new Date().toISOString().substring(0, 7);
+    const targetMonth = selectedMonth === 'all' ? currentMonth : selectedMonth;
     const expensesByCategory: Record<string, number> = {};
     
     data.transactions.forEach(t => {
-      if (t.type === 'expense' && t.date.startsWith(currentMonth)) {
+      if (t.type === 'expense' && t.date.startsWith(targetMonth)) {
         expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
       }
     });
 
     return data.budgets
-      .filter(b => b.month === currentMonth)
+      .filter(b => b.month === targetMonth)
       .map(b => {
         const spent = expensesByCategory[b.category] || 0;
         const percentage = (spent / b.amount) * 100;
         return { category: b.category, spent, budget: b.amount, percentage };
       })
       .filter(a => a.percentage > 100); // Alertar si supera el 100%
-  }, [data.transactions, data.budgets]);
+  }, [data.transactions, data.budgets, selectedMonth]);
 
   // Distribuciones
   const allocationSummary = useMemo(() => {
-    const currentMonth = new Date().toISOString().substring(0, 7);
     const incomeByCat: Record<string, number> = {};
     
-    // Ingresos del mes actual
+    // Ingresos del mes seleccionado
     data.transactions.forEach(t => {
-      if (t.type === 'income' && t.date.startsWith(currentMonth)) {
+      if (t.type === 'income' && (selectedMonth === 'all' || t.date.startsWith(selectedMonth))) {
         incomeByCat[t.category] = (incomeByCat[t.category] || 0) + t.amount;
       }
     });
 
     const aggregated: Record<string, { fundName: string; assignedAmount: number; consumedAmount: number; balance: number; sources: string[] }> = {};
 
-    // Obtener los gastos asociados a cada rubro en el mes actual
+    // Obtener los gastos asociados a cada rubro en el mes seleccionado
     const fundExpenses: Record<string, number> = {};
     data.transactions.forEach(t => {
-      if (t.type === 'expense' && t.date.startsWith(currentMonth) && t.allocationFund) {
+      if (t.type === 'expense' && (selectedMonth === 'all' || t.date.startsWith(selectedMonth)) && t.allocationFund) {
         fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
       }
     });
@@ -116,11 +155,27 @@ export function Dashboard() {
       fund.balance = fund.assignedAmount - fund.consumedAmount;
       return fund;
     }).sort((a, b) => a.fundName.localeCompare(b.fundName));
-  }, [data.allocations, data.transactions]);
+  }, [data.allocations, data.transactions, selectedMonth]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-white">Resumen Financiero</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Resumen Financiero</h1>
+        
+        <div className="flex items-center gap-3">
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Mes de análisis:</label>
+          <select 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-white/10 transition-colors"
+          >
+            <option value="all" className="bg-slate-800">Todos los meses</option>
+            {availableMonths.map(month => (
+              <option key={month} value={month} className="bg-slate-800">{formatMonthYear(month)}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
