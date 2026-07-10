@@ -13,6 +13,39 @@ export function Allocations() {
 
   const [selectedIncomeCat, setSelectedIncomeCat] = useState('');
 
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return new Date().toISOString().substring(0, 7);
+  });
+
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    const currentMonthStr = new Date().toISOString().substring(0, 7);
+    monthsSet.add(currentMonthStr);
+    
+    data.transactions.forEach(t => {
+      if (t.date && t.date.length >= 7) {
+        monthsSet.add(t.date.substring(0, 7));
+      }
+    });
+    
+    return Array.from(monthsSet).sort().reverse();
+  }, [data.transactions]);
+
+  function formatMonthYear(monthStr: string) {
+    if (monthStr === 'all') return 'Todos los meses';
+    if (!monthStr || monthStr.length < 7) return monthStr;
+    const [year, month] = monthStr.split('-');
+    const monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    const monthIndex = parseInt(month, 10) - 1;
+    if (monthIndex >= 0 && monthIndex < 12) {
+      return `${monthNames[monthIndex]} ${year}`;
+    }
+    return monthStr;
+  }
+
   useEffect(() => {
     if (sortedIncomeCategories.length > 0 && (!selectedIncomeCat || !sortedIncomeCategories.some(c => c.name === selectedIncomeCat))) {
       setSelectedIncomeCat(sortedIncomeCategories[0].name);
@@ -27,38 +60,36 @@ export function Allocations() {
   const [transferDestination, setTransferDestination] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
 
-  const currentMonth = new Date().toISOString().substring(0, 7);
-
   // Totals calculation
   const allocationsForCategory = data.allocations
     .filter(a => a.incomeCategory === selectedIncomeCat)
     .sort((a, b) => a.fundName.localeCompare(b.fundName));
   const currentTotalPercent = allocationsForCategory.reduce((acc, a) => acc + a.percentage, 0);
 
-  // Calculate total income for the selected category in the current month
+  // Calculate total income for the selected category in the selected month
   const totalIncomeForCategoryMonth = useMemo(() => {
     return data.transactions
-      .filter(t => t.type === 'income' && t.category === selectedIncomeCat && t.date.startsWith(currentMonth))
+      .filter(t => t.type === 'income' && t.category === selectedIncomeCat && (selectedMonth === 'all' || t.date.startsWith(selectedMonth)))
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [data.transactions, selectedIncomeCat, currentMonth]);
+  }, [data.transactions, selectedIncomeCat, selectedMonth]);
 
   // Unique list of all active funds for transfers
   const allUniqueFunds = useMemo<string[]>(() => {
     return Array.from(new Set(data.allocations.map(a => a.fundName.trim()))).sort((a: string, b: string) => a.localeCompare(b));
   }, [data.allocations]);
 
-  // Calculate actual total balances for each fund (cumulative)
+  // Calculate actual total balances for each fund (cumulative or filtered by selected month)
   const fundBalances = useMemo(() => {
     const incomeByCat: Record<string, number> = {};
     data.transactions.forEach(t => {
-      if (t.type === 'income') {
+      if (t.type === 'income' && (selectedMonth === 'all' || t.date.startsWith(selectedMonth))) {
         incomeByCat[t.category] = (incomeByCat[t.category] || 0) + t.amount;
       }
     });
 
     const fundExpenses: Record<string, number> = {};
     data.transactions.forEach(t => {
-      if (t.type === 'expense' && t.allocationFund) {
+      if (t.type === 'expense' && t.allocationFund && (selectedMonth === 'all' || t.date.startsWith(selectedMonth))) {
         fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
       }
     });
@@ -81,7 +112,7 @@ export function Allocations() {
     });
 
     return balances;
-  }, [data.allocations, data.transactions]);
+  }, [data.allocations, data.transactions, selectedMonth]);
 
   // Auto-set transfer source and destination
   useEffect(() => {
@@ -141,6 +172,15 @@ export function Allocations() {
       if (!confirmOverdraft) return;
     }
 
+    let transactionDate = new Date().toISOString().split('T')[0];
+    if (selectedMonth !== 'all') {
+      const currentCalMonth = new Date().toISOString().substring(0, 7);
+      if (selectedMonth !== currentCalMonth) {
+        // Establecer al primer día del mes seleccionado
+        transactionDate = `${selectedMonth}-01`;
+      }
+    }
+
     try {
       // 1. Transaction to subtract from Origin
       await addTransaction({
@@ -148,7 +188,7 @@ export function Allocations() {
         amount: amountNum,
         category: 'Otros',
         description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
-        date: new Date().toISOString().split('T')[0],
+        date: transactionDate,
         allocationFund: transferOrigin
       });
 
@@ -158,7 +198,7 @@ export function Allocations() {
         amount: -amountNum,
         category: 'Otros',
         description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
-        date: new Date().toISOString().split('T')[0],
+        date: transactionDate,
         allocationFund: transferDestination
       });
 
@@ -174,12 +214,26 @@ export function Allocations() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-white flex items-center">
             <LayoutGrid className="w-8 h-8 mr-3 text-emerald-400" /> Distribución
           </h2>
           <p className="text-slate-400 mt-1">Divide tus ingresos en diferentes rubros automáticamente.</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Mes vigente:</label>
+          <select 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-white/10 transition-colors"
+          >
+            <option value="all" className="bg-slate-800">Todos los meses</option>
+            {availableMonths.map(month => (
+              <option key={month} value={month} className="bg-slate-800">{formatMonthYear(month)}</option>
+            ))}
+          </select>
         </div>
       </div>
 
