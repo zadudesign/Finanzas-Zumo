@@ -401,23 +401,46 @@ export function Allocations() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {allocationsForCategory.map(a => {
                 const assignedAmount = (totalIncomeForCategoryMonth * a.percentage) / 100;
+                const fundKey = a.fundName.trim();
+                const currentBalance = fundBalances[fundKey] || 0;
+                
+                // Calcular el consumido para este rubro específico en el mes seleccionado
+                const consumedAmount = data.transactions
+                  .filter(t => t.type === 'expense' && t.allocationFund === fundKey && (selectedMonth === 'all' || t.date.startsWith(selectedMonth)))
+                  .reduce((sum, t) => sum + t.amount, 0);
+
                 return (
-                  <div key={a.id} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors group relative">
-                    <button 
-                      onClick={() => deleteAllocation(a.id)}
-                      className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-rose-400 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <div className="mb-4">
-                      <span className="inline-block px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg mb-2">
-                        {a.percentage}%
-                      </span>
-                      <h4 className="text-lg font-bold text-white leading-tight pr-8">{a.fundName}</h4>
-                    </div>
+                  <div key={a.id} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors group relative flex flex-col justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Monto Asignado</p>
-                      <p className="text-xl font-bold text-emerald-400">{formatCurrency(assignedAmount)}</p>
+                      <button 
+                        onClick={() => deleteAllocation(a.id)}
+                        className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-rose-400 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="mb-4">
+                        <span className="inline-block px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg mb-2">
+                          {a.percentage}%
+                        </span>
+                        <h4 className="text-lg font-bold text-white leading-tight pr-8">{a.fundName}</h4>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mt-4 pt-4 border-t border-white/5">
+                      <div className="flex justify-between items-end">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-none">Asignado de {selectedIncomeCat}</p>
+                        <p className="text-sm font-bold text-slate-300 font-mono leading-none">{formatCurrency(assignedAmount)}</p>
+                      </div>
+                      <div className="flex justify-between items-end">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-none">Consumido</p>
+                        <p className="text-sm font-bold text-rose-400 font-mono leading-none">-{formatCurrency(consumedAmount)}</p>
+                      </div>
+                      <div className="flex justify-between items-end mt-1 pt-2 border-t border-white/10">
+                        <p className="text-xs uppercase tracking-widest font-bold text-slate-400 leading-none">Saldo Rubro</p>
+                        <p className={cn("text-base font-bold font-mono leading-none", currentBalance < 0 ? "text-rose-400" : "text-emerald-400")}>
+                          {formatCurrency(currentBalance)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 );
