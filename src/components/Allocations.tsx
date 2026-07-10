@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../lib/utils';
-import { LayoutGrid, Plus, Trash2, PieChart, Coins } from 'lucide-react';
+import { LayoutGrid, Plus, Trash2, PieChart, Coins, ArrowRightLeft } from 'lucide-react';
 import { LucideIcon } from './Settings';
 
 export function Allocations() {
-  const { data, addAllocation, deleteAllocation } = useFinance();
+  const { data, addAllocation, deleteAllocation, addTransaction } = useFinance();
 
   const sortedIncomeCategories = useMemo(() => {
     return [...data.categories.income].sort((a, b) => a.name.localeCompare(b.name));
@@ -22,6 +22,11 @@ export function Allocations() {
   const [fundName, setFundName] = useState('');
   const [percentage, setPercentage] = useState('');
 
+  // Fund to fund transfer states
+  const [transferOrigin, setTransferOrigin] = useState('');
+  const [transferDestination, setTransferDestination] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+
   const currentMonth = new Date().toISOString().substring(0, 7);
 
   // Totals calculation
@@ -36,6 +41,69 @@ export function Allocations() {
       .filter(t => t.type === 'income' && t.category === selectedIncomeCat && t.date.startsWith(currentMonth))
       .reduce((sum, t) => sum + t.amount, 0);
   }, [data.transactions, selectedIncomeCat, currentMonth]);
+
+  // Unique list of all active funds for transfers
+  const allUniqueFunds = useMemo<string[]>(() => {
+    return Array.from(new Set(data.allocations.map(a => a.fundName.trim()))).sort((a: string, b: string) => a.localeCompare(b));
+  }, [data.allocations]);
+
+  // Calculate actual total balances for each fund (cumulative)
+  const fundBalances = useMemo(() => {
+    const incomeByCat: Record<string, number> = {};
+    data.transactions.forEach(t => {
+      if (t.type === 'income') {
+        incomeByCat[t.category] = (incomeByCat[t.category] || 0) + t.amount;
+      }
+    });
+
+    const fundExpenses: Record<string, number> = {};
+    data.transactions.forEach(t => {
+      if (t.type === 'expense' && t.allocationFund) {
+        fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
+      }
+    });
+
+    const balances: Record<string, number> = {};
+    data.allocations.forEach(a => {
+      const key = a.fundName.trim();
+      balances[key] = 0;
+    });
+
+    data.allocations.forEach(a => {
+      const incomeForCat = incomeByCat[a.incomeCategory] || 0;
+      const assignedAmount = (incomeForCat * a.percentage) / 100;
+      const key = a.fundName.trim();
+      balances[key] += assignedAmount;
+    });
+
+    Object.keys(balances).forEach(key => {
+      balances[key] -= (fundExpenses[key] || 0);
+    });
+
+    return balances;
+  }, [data.allocations, data.transactions]);
+
+  // Auto-set transfer source and destination
+  useEffect(() => {
+    if (allUniqueFunds.length > 0) {
+      if (!transferOrigin || !allUniqueFunds.includes(transferOrigin)) {
+        setTransferOrigin(allUniqueFunds[0]);
+      }
+    } else {
+      setTransferOrigin('');
+    }
+  }, [allUniqueFunds, transferOrigin]);
+
+  useEffect(() => {
+    const filteredDestinations = allUniqueFunds.filter(f => f !== transferOrigin);
+    if (filteredDestinations.length > 0) {
+      if (!transferDestination || !filteredDestinations.includes(transferDestination)) {
+        setTransferDestination(filteredDestinations[0]);
+      }
+    } else {
+      setTransferDestination('');
+    }
+  }, [allUniqueFunds, transferOrigin, transferDestination]);
 
   const handleAddAllocation = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +122,56 @@ export function Allocations() {
     setPercentage('');
   };
 
+  const handleTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transferOrigin || !transferDestination || !transferAmount || isNaN(Number(transferAmount))) {
+      return;
+    }
+    const amountNum = Number(transferAmount);
+    if (amountNum <= 0) {
+      alert('El monto a transferir debe ser mayor a cero.');
+      return;
+    }
+
+    const originBalance = fundBalances[transferOrigin] || 0;
+    if (amountNum > originBalance) {
+      const confirmOverdraft = window.confirm(
+        `El rubro de origen "${transferOrigin}" tiene un saldo de ${formatCurrency(originBalance)}, que es menor al monto de transferencia solicitado (${formatCurrency(amountNum)}). ¿Deseas proceder de todos modos?`
+      );
+      if (!confirmOverdraft) return;
+    }
+
+    try {
+      // 1. Transaction to subtract from Origin
+      await addTransaction({
+        type: 'expense',
+        amount: amountNum,
+        category: 'Otros',
+        description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
+        date: new Date().toISOString().split('T')[0],
+        allocationFund: transferOrigin
+      });
+
+      // 2. Transaction to add to Destination (negative expense)
+      await addTransaction({
+        type: 'expense',
+        amount: -amountNum,
+        category: 'Otros',
+        description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
+        date: new Date().toISOString().split('T')[0],
+        allocationFund: transferDestination
+      });
+
+      setTransferAmount('');
+      alert(`Transferencia de ${formatCurrency(amountNum)} realizada exitosamente de "${transferOrigin}" a "${transferDestination}".`);
+    } catch (err) {
+      console.error('Error during transfer:', err);
+      alert('Ocurrió un error al realizar la transferencia.');
+    }
+  };
+
+  const selectedOriginBalance = fundBalances[transferOrigin] || 0;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">
@@ -67,63 +185,143 @@ export function Allocations() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Panel Formulario */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 lg:p-8 space-y-6">
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold text-white flex items-center">
-              <PieChart className="w-6 h-6 mr-2 text-indigo-400" /> Crear Regla
-            </h3>
-            <p className="text-xs text-slate-400">Selecciona una fuente de ingreso y asignale un rubro con porcentaje.</p>
+        {/* Columna Izquierda: Formularios */}
+        <div className="space-y-6">
+          
+          {/* Panel Formulario - Crear Regla */}
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 space-y-6">
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white flex items-center">
+                <PieChart className="w-6 h-6 mr-2 text-indigo-400" /> Crear Regla
+              </h3>
+              <p className="text-xs text-slate-400">Selecciona una fuente de ingreso y asignale un rubro con porcentaje.</p>
+            </div>
+
+            <form onSubmit={handleAddAllocation} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Fuente de Ingreso</label>
+                <select 
+                  value={selectedIncomeCat} 
+                  onChange={(e) => setSelectedIncomeCat(e.target.value)}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none appearance-none"
+                >
+                  {sortedIncomeCategories.map(cat => (
+                    <option key={cat.name} value={cat.name} className="bg-slate-900 text-slate-200">
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nombre del Rubro</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: Ahorro Vacaciones"
+                  value={fundName}
+                  onChange={e => setFundName(e.target.value)}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none placeholder:text-slate-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Porcentaje (%) - Disponible: {100 - currentTotalPercent}%</label>
+                <input 
+                  type="number" 
+                  placeholder="Ej: 20"
+                  min="1"
+                  max={100 - currentTotalPercent}
+                  value={percentage}
+                  onChange={e => setPercentage(e.target.value)}
+                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none placeholder:text-slate-600"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={data.categories.income.length === 0 || currentTotalPercent >= 100}
+                className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Agregar Rubro
+              </button>
+            </form>
           </div>
 
-          <form onSubmit={handleAddAllocation} className="space-y-5">
+          {/* Panel Formulario - Transferir entre Rubros */}
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Fuente de Ingreso</label>
-              <select 
-                value={selectedIncomeCat} 
-                onChange={(e) => setSelectedIncomeCat(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none appearance-none"
-              >
-                {sortedIncomeCategories.map(cat => (
-                  <option key={cat.name} value={cat.name} className="bg-slate-900 text-slate-200">
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+              <h3 className="text-xl font-bold text-white flex items-center">
+                <ArrowRightLeft className="w-6 h-6 mr-2 text-amber-400" /> Transferir Fondos
+              </h3>
+              <p className="text-xs text-slate-400">Traspasa dinero directamente desde un rubro a otro.</p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nombre del Rubro</label>
-              <input 
-                type="text" 
-                placeholder="Ej: Ahorro Vacaciones"
-                value={fundName}
-                onChange={e => setFundName(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none placeholder:text-slate-600"
-              />
-            </div>
+            {allUniqueFunds.length < 2 ? (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center">
+                <p className="text-xs text-amber-300">Se necesitan al menos 2 rubros registrados para habilitar las transferencias.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleTransfer} className="space-y-5">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rubro Origen</label>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                      Saldo: {formatCurrency(selectedOriginBalance)}
+                    </span>
+                  </div>
+                  <select 
+                    value={transferOrigin} 
+                    onChange={(e) => setTransferOrigin(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none appearance-none"
+                  >
+                    {allUniqueFunds.map(fund => (
+                      <option key={fund} value={fund} className="bg-slate-900 text-slate-200">
+                        {fund} ({formatCurrency(fundBalances[fund] || 0)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Porcentaje (%) - Disponible: {100 - currentTotalPercent}%</label>
-              <input 
-                type="number" 
-                placeholder="Ej: 20"
-                min="1"
-                max={100 - currentTotalPercent}
-                value={percentage}
-                onChange={e => setPercentage(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none placeholder:text-slate-600"
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rubro Destino</label>
+                  <select 
+                    value={transferDestination} 
+                    onChange={(e) => setTransferDestination(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none appearance-none"
+                  >
+                    {allUniqueFunds.filter(f => f !== transferOrigin).map(fund => (
+                      <option key={fund} value={fund} className="bg-slate-900 text-slate-200">
+                        {fund} ({formatCurrency(fundBalances[fund] || 0)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <button 
-              type="submit" 
-              disabled={data.categories.income.length === 0 || currentTotalPercent >= 100}
-              className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Agregar Rubro
-            </button>
-          </form>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Monto a Transferir</label>
+                  <input 
+                    type="number" 
+                    placeholder="Ej: 50000"
+                    value={transferAmount}
+                    onChange={e => setTransferAmount(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none placeholder:text-slate-600"
+                  />
+                  {transferAmount && !isNaN(Number(transferAmount)) && Number(transferAmount) > 0 && (
+                    <div className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-1.5 rounded-lg border border-amber-500/20 font-mono tracking-wide mt-1 animate-pulse">
+                      {formatCurrency(Number(transferAmount))} COP
+                    </div>
+                  )}
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20 text-sm"
+                >
+                  Confirmar Transferencia
+                </button>
+              </form>
+            )}
+          </div>
 
         </div>
 
@@ -153,7 +351,7 @@ export function Allocations() {
                   <div key={a.id} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors group relative">
                     <button 
                       onClick={() => deleteAllocation(a.id)}
-                      className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-rose-400 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-rose-400 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -184,3 +382,4 @@ export function Allocations() {
     </div>
   );
 }
+
