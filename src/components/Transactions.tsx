@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionType } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 
 import { LucideIcon } from './Settings';
 
@@ -22,9 +22,32 @@ function formatMonthYear(monthStr: string) {
 }
 
 export function Transactions() {
-  const { data, addTransaction, deleteTransaction } = useFinance();
+  const { data, addTransaction, deleteTransaction, updateTransaction } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
   
+  // Editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editCategory, setEditCategory] = useState('');
+  const [editFund, setEditFund] = useState('');
+
+  const startEditing = (t: any) => {
+    setEditingId(t.id);
+    setEditCategory(t.category || '');
+    setEditFund(t.allocationFund || '');
+  };
+
+  const handleSave = async (id: string) => {
+    await updateTransaction(id, {
+      category: editCategory,
+      allocationFund: editFund || undefined
+    });
+    setEditingId(null);
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+  };
+
   // Form state
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -279,49 +302,112 @@ export function Transactions() {
                  No hay transacciones registradas.
                </td>
              </tr>
-            ) : filteredTransactions.map((t) => (
-              <tr key={t.id} className="hover:bg-white/5 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{t.date}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200 font-medium">{t.description || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/5 text-slate-300">
-                    {(() => {
-                      if (!t.category) {
-                        return <>Ninguno</>;
-                      }
-                      const catObj = [...data.categories.income, ...data.categories.expense].find(c => c.name === t.category);
-                      return (
-                        <>
-                          {catObj && <LucideIcon name={catObj.icon} className="w-3 h-3 mr-2" />}
-                          {t.category}
-                        </>
-                      );
-                    })()}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 font-medium">
-                  {t.allocationFund ? (
-                    <span className="inline-block px-2 py-0.5 bg-indigo-500/20 text-indigo-400 text-[10px] font-bold rounded uppercase tracking-wider border border-indigo-500/20">
-                      {t.allocationFund}
-                    </span>
-                  ) : '-'}
-                </td>
-                <td className={cn(
-                  "px-6 py-4 whitespace-nowrap text-sm font-bold font-mono text-right",
-                  t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
-                )}>
-                  {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button 
-                    onClick={() => deleteTransaction(t.id)}
-                    className="text-slate-500 hover:text-rose-400 transition-colors cursor-pointer bg-white/5 p-2 rounded-lg hover:bg-rose-500/10"
-                  >
-                    <Trash2 className="w-4 h-4 ml-auto" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            ) : filteredTransactions.map((t) => {
+              const isEditing = editingId === t.id;
+              return (
+                <tr key={t.id} className={cn("transition-colors", isEditing ? "bg-indigo-500/5 hover:bg-indigo-500/10" : "hover:bg-white/5")}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{t.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200 font-medium">{t.description || '-'}</td>
+                  
+                  {/* Categoría */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {isEditing ? (
+                      <select
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        className="bg-black/40 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none w-full max-w-[180px]"
+                      >
+                        <option value="" className="bg-slate-800">Ninguna</option>
+                        {[...data.categories[t.type]].sort((a, b) => a.name.localeCompare(b.name)).map(cat => (
+                          <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/5 text-slate-300">
+                        {(() => {
+                          if (!t.category) {
+                            return <>Ninguno</>;
+                          }
+                          const catObj = [...data.categories.income, ...data.categories.expense].find(c => c.name === t.category);
+                          return (
+                            <>
+                              {catObj && <LucideIcon name={catObj.icon} className="w-3 h-3 mr-2" />}
+                              {t.category}
+                            </>
+                          );
+                        })()}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Rubro */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 font-medium">
+                    {isEditing ? (
+                      <select
+                        value={editFund}
+                        onChange={(e) => setEditFund(e.target.value)}
+                        className="bg-black/40 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none w-full max-w-[180px]"
+                      >
+                        <option value="" className="bg-slate-800">Ninguno</option>
+                        {uniqueFunds.map(fund => (
+                          <option key={fund} value={fund} className="bg-slate-800">{fund}</option>
+                        ))}
+                      </select>
+                    ) : t.allocationFund ? (
+                      <span className="inline-block px-2 py-0.5 bg-indigo-500/20 text-indigo-400 text-[10px] font-bold rounded uppercase tracking-wider border border-indigo-500/20">
+                        {t.allocationFund}
+                      </span>
+                    ) : '-'}
+                  </td>
+
+                  <td className={cn(
+                    "px-6 py-4 whitespace-nowrap text-sm font-bold font-mono text-right",
+                    t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
+                  )}>
+                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                  </td>
+                  
+                  {/* Acciones */}
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {isEditing ? (
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleSave(t.id)}
+                          className="text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 p-2 rounded-lg hover:bg-emerald-500/20 cursor-pointer"
+                          title="Guardar cambios"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="text-slate-400 hover:text-rose-400 transition-colors bg-white/5 p-2 rounded-lg hover:bg-white/10 cursor-pointer"
+                          title="Cancelar"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => startEditing(t)}
+                          className="text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 p-2 rounded-lg hover:bg-indigo-500/20 cursor-pointer"
+                          title="Editar categoría / rubro"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => deleteTransaction(t.id)}
+                          className="text-slate-500 hover:text-rose-400 transition-colors cursor-pointer bg-white/5 p-2 rounded-lg hover:bg-rose-500/10"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4 border-none" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

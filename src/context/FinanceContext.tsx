@@ -10,6 +10,7 @@ interface FinanceContextType {
   setSession: React.Dispatch<React.SetStateAction<any>>;
   addTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
   setBudget: (b: Omit<Budget, 'id'>) => Promise<void>;
   addCategory: (type: 'income' | 'expense', category: Category) => Promise<void>;
   deleteCategory: (type: 'income' | 'expense', name: string) => Promise<void>;
@@ -279,6 +280,37 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
     }
   };
 
+  const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    setData(prev => ({
+      ...prev,
+      transactions: prev.transactions.map(t => t.id === id ? { ...t, ...updates } : t)
+    }));
+
+    if (hasSupabaseConfig) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const dbUpdates: any = {};
+          if (updates.category !== undefined) dbUpdates.category = updates.category;
+          if (updates.allocationFund !== undefined) dbUpdates.allocation_fund = updates.allocationFund || null;
+          if (updates.description !== undefined) dbUpdates.description = updates.description;
+          if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+          if (updates.date !== undefined) dbUpdates.date = updates.date;
+          if (updates.type !== undefined) dbUpdates.type = updates.type;
+
+          const { error } = await supabase
+            .from('transactions')
+            .update(dbUpdates)
+            .eq('id', id);
+          
+          if (error) throw error;
+        }
+      } catch (error) {
+        console.error('Supabase Sync Error (updateTransaction):', error);
+      }
+    }
+  };
+
   const setBudget = async (b: Omit<Budget, 'id'>) => {
     const newB = { ...b, id: crypto.randomUUID() };
     setData(prev => {
@@ -535,6 +567,7 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       setSession,
       addTransaction, 
       deleteTransaction, 
+      updateTransaction,
       setBudget, 
       deleteBudget, 
       addCategory, 
