@@ -410,7 +410,17 @@ export function Allocations() {
                   .reduce((sum, t) => sum + t.amount, 0);
 
                 return (
-                  <div key={a.id} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors group relative flex flex-col justify-between">
+                  <div 
+                    key={a.id} 
+                    className={cn(
+                      "backdrop-blur-xl border rounded-2xl p-5 hover:bg-white/10 transition-all duration-300 group relative flex flex-col justify-between",
+                      currentBalance < 0 
+                        ? "bg-rose-500/15 border-rose-500/40 shadow-[0_0_15px_rgba(239,68,68,0.12)]" 
+                        : Math.abs(currentBalance) < 0.01
+                          ? "bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.12)]"
+                          : "bg-white/5 border-white/10"
+                    )}
+                  >
                     <div>
                       <button 
                         onClick={() => deleteAllocation(a.id)}
