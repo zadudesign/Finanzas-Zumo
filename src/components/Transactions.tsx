@@ -240,60 +240,124 @@ export function Transactions() {
         </form>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
+        {/* Fila Superior: Mes y Total Filtrado */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
           <div className="flex items-center gap-3">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Mes:</label>
             <select 
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-40 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
+              className="w-44 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors cursor-pointer [color-scheme:dark]"
             >
-              <option value="all" className="bg-slate-800">Todos</option>
+              <option value="all" className="bg-slate-800">Todos los meses</option>
               {availableMonths.map(month => (
                 <option key={month} value={month} className="bg-slate-800">{formatMonthYear(month)}</option>
               ))}
             </select>
           </div>
-
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Categoría:</label>
-            <select 
-              value={filterCategory} 
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-40 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
-            >
-              <option value="" className="bg-slate-800">Todas</option>
-              {Array.from(new Map([...data.categories.expense, ...data.categories.income].map(c => [c.name, c])).values())
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map(cat => (
-                  <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
-                ))
-              }
-            </select>
-          </div>
           
-          {uniqueFunds.length > 0 && (
-            <div className="flex items-center gap-3">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Rubro:</label>
-              <select 
-                value={filterFund} 
-                onChange={(e) => setFilterFund(e.target.value)}
-                className="w-40 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none hover:bg-black/30 transition-colors"
-              >
-                <option value="" className="bg-slate-800">Todos</option>
-                {uniqueFunds.map(fund => (
-                  <option key={fund} value={fund} className="bg-slate-800">{fund}</option>
-                ))}
-              </select>
+          {(filterCategory || filterFund) && (
+            <div className="text-right w-full sm:w-auto">
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Monto Total Filtrado</p>
+              <p className="text-2xl font-bold text-white font-mono">{formatCurrency(filterTotal)}</p>
             </div>
           )}
         </div>
-        
-        {(filterCategory || filterFund) && (
-          <div className="text-right">
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Monto Total Filtrado</p>
-            <p className="text-2xl font-bold text-white font-mono">{formatCurrency(filterTotal)}</p>
+
+        {/* Sección de Botones de Categorías */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Categoría:</label>
+            {filterCategory && (
+              <button 
+                onClick={() => setFilterCategory('')}
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors cursor-pointer bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20"
+              >
+                Limpiar filtro
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilterCategory('')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-200 cursor-pointer",
+                filterCategory === ''
+                  ? "bg-white text-slate-900 border-white font-semibold shadow-lg shadow-white/10"
+                  : "bg-white/5 text-slate-300 border-white/5 hover:bg-white/10 hover:border-white/20"
+              )}
+            >
+              Todas
+            </button>
+            {Array.from(new Map([...data.categories.expense, ...data.categories.income].map(c => [c.name, c])).values())
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map(cat => {
+                const isSelected = filterCategory === cat.name;
+                return (
+                  <button
+                    key={cat.name}
+                    onClick={() => setFilterCategory(cat.name)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-200 cursor-pointer",
+                      isSelected
+                        ? "bg-indigo-500 text-white border-indigo-400 font-semibold shadow-lg shadow-indigo-500/30 scale-[1.02]"
+                        : "bg-white/5 text-slate-300 border-white/5 hover:bg-white/10 hover:border-white/20"
+                    )}
+                  >
+                    <LucideIcon name={cat.icon} className="w-3.5 h-3.5" />
+                    {cat.name}
+                  </button>
+                );
+              })
+            }
+          </div>
+        </div>
+
+        {/* Sección de Botones de Rubros */}
+        {uniqueFunds.length > 0 && (
+          <div className="space-y-2.5 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 opacity-80">Rubro:</label>
+              {filterFund && (
+                <button 
+                  onClick={() => setFilterFund('')}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors cursor-pointer bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20"
+                >
+                  Limpiar filtro
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setFilterFund('')}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-200 cursor-pointer",
+                  filterFund === ''
+                    ? "bg-white text-slate-900 border-white font-semibold shadow-lg shadow-white/10"
+                    : "bg-white/5 text-slate-300 border-white/5 hover:bg-white/10 hover:border-white/20"
+                )}
+              >
+                Todos
+              </button>
+              {uniqueFunds.map(fund => {
+                const isSelected = filterFund === fund;
+                return (
+                  <button
+                    key={fund}
+                    onClick={() => setFilterFund(fund)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-200 cursor-pointer",
+                      isSelected
+                        ? "bg-indigo-500 text-white border-indigo-400 font-semibold shadow-lg shadow-indigo-500/30 scale-[1.02]"
+                        : "bg-white/5 text-slate-300 border-white/5 hover:bg-white/10 hover:border-white/20"
+                    )}
+                  >
+                    {fund}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
