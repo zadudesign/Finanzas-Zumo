@@ -29,17 +29,32 @@ export function Transactions() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCategory, setEditCategory] = useState('');
   const [editFund, setEditFund] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editAmount, setEditAmount] = useState('');
 
   const startEditing = (t: any) => {
     setEditingId(t.id);
     setEditCategory(t.category || '');
     setEditFund(t.allocationFund || '');
+    setEditDate(t.date || '');
+    setEditDescription(t.description || '');
+    setEditAmount(t.amount?.toString() || '0');
   };
 
   const handleSave = async (id: string) => {
+    const numAmount = parseFloat(editAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert("Por favor, ingresa un monto válido mayor a 0.");
+      return;
+    }
+
     await updateTransaction(id, {
       category: editCategory,
-      allocationFund: editFund || undefined
+      allocationFund: editFund || undefined,
+      date: editDate,
+      description: editDescription,
+      amount: numAmount
     });
     setEditingId(null);
   };
@@ -306,8 +321,34 @@ export function Transactions() {
               const isEditing = editingId === t.id;
               return (
                 <tr key={t.id} className={cn("transition-colors", isEditing ? "bg-indigo-500/5 hover:bg-indigo-500/10" : "hover:bg-white/5")}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{t.date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200 font-medium">{t.description || '-'}</td>
+                  {/* Fecha */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        className="bg-black/40 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none w-full max-w-[130px]"
+                      />
+                    ) : (
+                      t.date
+                    )}
+                  </td>
+
+                  {/* Descripción */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200 font-medium">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        placeholder="Descripción"
+                        className="bg-black/40 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none w-full max-w-[180px]"
+                      />
+                    ) : (
+                      t.description || '-'
+                    )}
+                  </td>
                   
                   {/* Categoría */}
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -360,11 +401,30 @@ export function Transactions() {
                     ) : '-'}
                   </td>
 
-                  <td className={cn(
-                    "px-6 py-4 whitespace-nowrap text-sm font-bold font-mono text-right",
-                    t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
-                  )}>
-                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                  {/* Monto */}
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    {isEditing ? (
+                      <div className="flex items-center justify-end">
+                        <span className="text-slate-400 mr-1 text-sm font-bold font-mono">
+                          {t.type === 'income' ? '+' : '-'}
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={editAmount}
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          className="bg-black/40 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none w-24 text-right font-mono font-bold"
+                        />
+                      </div>
+                    ) : (
+                      <span className={cn(
+                        "text-sm font-bold font-mono",
+                        t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
+                      )}>
+                        {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                      </span>
+                    )}
                   </td>
                   
                   {/* Acciones */}
@@ -391,7 +451,7 @@ export function Transactions() {
                         <button 
                           onClick={() => startEditing(t)}
                           className="text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 p-2 rounded-lg hover:bg-indigo-500/20 cursor-pointer"
-                          title="Editar categoría / rubro"
+                          title="Editar transacción"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
