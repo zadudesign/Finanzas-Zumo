@@ -150,14 +150,32 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
             }
 
             const cloudSFItems = !sfError && sfItems
-              ? sfItems.map((item: any) => ({
-                  id: item.id,
-                  fundType: item.fund_type,
-                  name: item.name,
-                  amount: Number(item.amount),
-                  isCompleted: item.is_completed,
-                  createdAt: item.created_at
-                })) as SpecialFundItem[]
+              ? sfItems.map((item: any) => {
+                  let name = item.name || '';
+                  let isRecurring = false;
+                  let startMonth = undefined;
+                  let endMonth = undefined;
+                  if (name.startsWith('name::recurring::')) {
+                    const parts = name.split('::');
+                    if (parts.length >= 5) {
+                      startMonth = parts[2];
+                      endMonth = parts[3];
+                      name = parts.slice(4).join('::');
+                      isRecurring = true;
+                    }
+                  }
+                  return {
+                    id: item.id,
+                    fundType: item.fund_type,
+                    name,
+                    amount: Number(item.amount),
+                    isCompleted: item.is_completed,
+                    createdAt: item.created_at,
+                    isRecurring,
+                    startMonth,
+                    endMonth
+                  };
+                }) as SpecialFundItem[]
               : (data.specialFundItems || []);
 
             const cloudData = {
@@ -466,13 +484,17 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          let dbName = item.name;
+          if (item.isRecurring) {
+            dbName = `name::recurring::${item.startMonth}::${item.endMonth}::${item.name}`;
+          }
           const { error } = await supabase
             .from('special_fund_items')
             .insert([{ 
               id: newItem.id, 
               user_id: session.user.id,
               fund_type: item.fundType,
-              name: item.name,
+              name: dbName,
               amount: item.amount,
               is_completed: item.isCompleted
             }]);

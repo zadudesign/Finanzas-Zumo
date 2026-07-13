@@ -74,6 +74,27 @@ export function Budgets() {
   const [obligacionesName, setObligacionesName] = useState('');
   const [obligacionesAmount, setObligacionesAmount] = useState('');
 
+  // Estados para obligaciones recurrentes
+  const [isObligacionesRecurring, setIsObligacionesRecurring] = useState(false);
+  const [obligacionesStartMonth, setObligacionesStartMonth] = useState(() => new Date().toISOString().substring(0, 7));
+  const [obligacionesEndMonth, setObligacionesEndMonth] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 11); // Por defecto 12 meses
+    return date.toISOString().substring(0, 7);
+  });
+
+  const recurrenceMonthOptions = useMemo(() => {
+    const list: string[] = [];
+    const date = new Date();
+    // Desde hace 6 meses hasta 18 meses en el futuro (25 meses en total)
+    date.setMonth(date.getMonth() - 6);
+    for (let i = 0; i < 25; i++) {
+      list.push(date.toISOString().substring(0, 7));
+      date.setMonth(date.getMonth() + 1);
+    }
+    return list;
+  }, []);
+
   // Sort states for Special Fund Items (default: 'amount_asc' which is lowest to highest price)
   const [inversionSort, setInversionSort] = useState<'amount_asc' | 'amount_desc' | 'alpha'>('amount_asc');
   const [obligacionesSort, setObligacionesSort] = useState<'amount_asc' | 'amount_desc' | 'alpha'>('amount_asc');
@@ -164,7 +185,19 @@ export function Budgets() {
   }, [data.specialFundItems, inversionSort]);
 
   const obligacionesItems = useMemo(() => {
-    const items = (data.specialFundItems || []).filter(item => item.fundType === 'Obligaciones');
+    let items = (data.specialFundItems || []).filter(item => item.fundType === 'Obligaciones');
+
+    // Filtrar obligaciones recurrentes según el mes de análisis seleccionado
+    if (selectedMonth !== 'all') {
+      items = items.filter(item => {
+        if (item.isRecurring) {
+          if (!item.startMonth || !item.endMonth) return false;
+          return selectedMonth >= item.startMonth && selectedMonth <= item.endMonth;
+        }
+        return true; // No recurrentes se muestran siempre
+      });
+    }
+
     if (obligacionesSort === 'amount_asc') {
       return [...items].sort((a, b) => a.amount - b.amount);
     } else if (obligacionesSort === 'amount_desc') {
@@ -172,7 +205,7 @@ export function Budgets() {
     } else {
       return [...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     }
-  }, [data.specialFundItems, obligacionesSort]);
+  }, [data.specialFundItems, obligacionesSort, selectedMonth]);
 
   const totalInversionPlanned = useMemo(() => {
     return inversionItems.reduce((acc, item) => acc + (item.isCompleted ? 0 : item.amount), 0);
@@ -198,14 +231,24 @@ export function Budgets() {
   const handleAddObligacionesItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!obligacionesName || !obligacionesAmount || isNaN(Number(obligacionesAmount))) return;
+
+    if (isObligacionesRecurring && obligacionesStartMonth > obligacionesEndMonth) {
+      alert("La fecha de inicio de la obligación recurrente no puede ser posterior a la fecha de finalización.");
+      return;
+    }
+
     addSpecialFundItem({
       fundType: 'Obligaciones',
       name: obligacionesName,
       amount: Number(obligacionesAmount),
-      isCompleted: false
+      isCompleted: false,
+      isRecurring: isObligacionesRecurring,
+      startMonth: isObligacionesRecurring ? obligacionesStartMonth : undefined,
+      endMonth: isObligacionesRecurring ? obligacionesEndMonth : undefined
     });
     setObligacionesName('');
     setObligacionesAmount('');
+    setIsObligacionesRecurring(false);
   };
 
   return (
@@ -633,13 +676,21 @@ export function Budgets() {
                             )} />
                           )}
                           <span className={cn(
-                            "text-xs font-medium truncate",
+                            "text-xs font-medium truncate flex flex-col gap-0.5",
                             item.isCompleted ? "line-through text-slate-500" : (isCoverable ? "text-white font-semibold" : "text-slate-200")
                           )}>
-                            {item.name}
-                            {isCoverable && !item.isCompleted && (
-                              <span className="ml-2 text-[9px] px-2 py-0.5 rounded-full bg-emerald-500 text-white font-bold tracking-wider uppercase border border-emerald-300/40">
-                                Cubrible
+                            <span className="flex items-center gap-2">
+                              {item.name}
+                              {isCoverable && !item.isCompleted && (
+                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500 text-white font-bold tracking-wider uppercase border border-emerald-300/40 shrink-0">
+                                  Cubrible
+                                </span>
+                              )}
+                            </span>
+                            {item.isRecurring && item.startMonth && item.endMonth && (
+                              <span className="text-[9px] text-emerald-400 font-medium flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                                Recurrente: {formatMonthYear(item.startMonth)} a {formatMonthYear(item.endMonth)}
                               </span>
                             )}
                           </span>
@@ -672,30 +723,74 @@ export function Budgets() {
           </div>
 
           {/* Add form */}
-          <form onSubmit={handleAddObligacionesItem} className="flex gap-2 mt-4 pt-4 border-t border-white/5 shrink-0">
-            <input
-              type="text"
-              placeholder="Ej: Seguro, Arriendo..."
-              value={obligacionesName}
-              onChange={e => setObligacionesName(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 flex-1 min-w-0"
-              required
-            />
-            <input
-              type="number"
-              placeholder="Valor"
-              value={obligacionesAmount}
-              onChange={e => setObligacionesAmount(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-20 font-mono"
-              required
-            />
-            <button
-              type="submit"
-              className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white p-2 rounded-xl transition-all flex items-center justify-center shrink-0"
-              title="Agregar"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+          <form onSubmit={handleAddObligacionesItem} className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-3 shrink-0">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Ej: Seguro, Arriendo..."
+                value={obligacionesName}
+                onChange={e => setObligacionesName(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 flex-1 min-w-0"
+                required
+              />
+              <input
+                type="number"
+                placeholder="Valor"
+                value={obligacionesAmount}
+                onChange={e => setObligacionesAmount(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-24 font-mono"
+                required
+              />
+              <button
+                type="submit"
+                className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white px-3 py-1.5 rounded-xl transition-all flex items-center justify-center shrink-0"
+                title="Agregar"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Opciones de Recurrencia */}
+            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isObligacionesRecurring}
+                  onChange={e => setIsObligacionesRecurring(e.target.checked)}
+                  className="rounded border-slate-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 bg-slate-800"
+                />
+                <span className="text-[11px] font-semibold text-slate-300">¿Es obligación recurrente? (Suscripción / Factura)</span>
+              </label>
+
+              {isObligacionesRecurring && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold mb-1">Pagar desde:</label>
+                    <select
+                      value={obligacionesStartMonth}
+                      onChange={e => setObligacionesStartMonth(e.target.value)}
+                      className="bg-slate-800/80 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500/50 w-full"
+                    >
+                      {recurrenceMonthOptions.map(m => (
+                        <option key={m} value={m}>{formatMonthYear(m)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider text-slate-400 font-bold mb-1">Pagar hasta:</label>
+                    <select
+                      value={obligacionesEndMonth}
+                      onChange={e => setObligacionesEndMonth(e.target.value)}
+                      className="bg-slate-800/80 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500/50 w-full"
+                    >
+                      {recurrenceMonthOptions.map(m => (
+                        <option key={m} value={m}>{formatMonthYear(m)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
           </form>
         </div>
       </div>

@@ -36,6 +36,9 @@ export interface SpecialFundItem {
   amount: number;
   isCompleted: boolean;
   createdAt?: string;
+  isRecurring?: boolean;
+  startMonth?: string;
+  endMonth?: string;
 }
 
 export interface FinanceData {
