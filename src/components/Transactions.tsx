@@ -362,7 +362,7 @@ export function Transactions() {
         )}
       </div>
 
-      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden">
+      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-x-auto">
         <table className="w-full min-w-[700px]">
           <thead className="bg-white/5 border-b border-white/10">
             <tr>
