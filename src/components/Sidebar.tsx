@@ -29,7 +29,7 @@ export function Sidebar({ currentTab, setCurrentTab, isOpen, onClose, onShowAuth
 
   return (
     <aside className={cn(
-      "w-64 bg-[#0a0f24]/95 md:bg-white/5 backdrop-blur-xl border-r border-white/10 text-slate-300 flex flex-col h-screen fixed top-0 left-0 z-40",
+      "w-64 bg-[#0a0f24]/95 md:bg-white/5 backdrop-blur-xl border-r border-white/10 text-slate-300 flex flex-col h-screen fixed top-0 left-0 z-40 overflow-y-auto",
       "transition-transform duration-300 ease-in-out md:translate-x-0",
       isOpen ? "translate-x-0" : "-translate-x-full"
     )}>
@@ -85,7 +85,22 @@ export function Sidebar({ currentTab, setCurrentTab, isOpen, onClose, onShowAuth
         ))}
       </nav>
 
-      <div className="p-4 border-t border-white/10 bg-white/5 space-y-2">
+      <div className="p-4 border-t border-white/10 bg-white/5 space-y-2.5">
+        {!session && hasSupabaseConfig && (
+          <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl mb-1">
+            <p className="text-[10px] text-indigo-300 font-semibold mb-1.5 text-center tracking-wide uppercase">Solo Local</p>
+            <button 
+              onClick={() => {
+                onShowAuth();
+                onClose();
+              }}
+              className="w-full py-2 bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-indigo-500/20"
+            >
+              Vincular Supabase
+            </button>
+          </div>
+        )}
+
         <button 
           onClick={() => handleTabSelect('settings')}
           className={cn(
@@ -98,7 +113,8 @@ export function Sidebar({ currentTab, setCurrentTab, isOpen, onClose, onShowAuth
           <Settings className={cn("w-5 h-5 mr-3 transition-opacity", currentTab === 'settings' ? "opacity-100" : "opacity-70")} />
           Configuración
         </button>
-        {session ? (
+
+        {session && (
           <button 
             onClick={() => {
               supabase.auth.signOut().catch(() => {});
@@ -110,20 +126,7 @@ export function Sidebar({ currentTab, setCurrentTab, isOpen, onClose, onShowAuth
             <LogOut className="w-5 h-5 mr-3 opacity-80" />
             Cerrar Sesión
           </button>
-        ) : hasSupabaseConfig ? (
-          <div className="px-4 py-2">
-            <p className="text-[10px] text-slate-500 mb-2 text-center">Datos guardados localmente</p>
-            <button 
-              onClick={() => {
-                onShowAuth();
-                onClose();
-              }}
-              className="w-full py-2 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-indigo-500/20 transition-all cursor-pointer"
-            >
-              Vincular Supabase
-            </button>
-          </div>
-        ) : null}
+        )}
       </div>
     </aside>
   );
