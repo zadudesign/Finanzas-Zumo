@@ -89,12 +89,8 @@ export function Allocations() {
 
     const fundExpenses: Record<string, number> = {};
     data.transactions.forEach(t => {
-      if (t.allocationFund && (selectedMonth === 'all' || t.date.startsWith(selectedMonth))) {
-        if (t.type === 'expense') {
-          fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
-        } else if (t.type === 'income') {
-          fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) - t.amount;
-        }
+      if (t.type === 'expense' && t.allocationFund && (selectedMonth === 'all' || t.date.startsWith(selectedMonth))) {
+        fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
       }
     });
 
@@ -186,7 +182,7 @@ export function Allocations() {
     }
 
     try {
-      // 1. Transaction to subtract from Origin (positive value in database representing outflow)
+      // 1. Transaction to subtract from Origin
       await addTransaction({
         type: 'expense',
         amount: amountNum,
@@ -196,11 +192,11 @@ export function Allocations() {
         allocationFund: transferOrigin
       });
 
-      // 2. Transaction to add to Destination (positive income representing inflow to destination)
+      // 2. Transaction to add to Destination (negative expense)
       await addTransaction({
-        type: 'income',
-        amount: amountNum,
-        category: '',
+        type: 'expense',
+        amount: -amountNum,
+        category: 'Transferencias',
         description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
         date: transactionDate,
         allocationFund: transferDestination

@@ -121,15 +121,11 @@ export function Dashboard() {
 
     const aggregated: Record<string, { fundName: string; assignedAmount: number; consumedAmount: number; balance: number; sources: string[] }> = {};
 
-    // Obtener los gastos y restar ingresos asociados a cada rubro en el mes seleccionado
+    // Obtener los gastos asociados a cada rubro en el mes seleccionado
     const fundExpenses: Record<string, number> = {};
     data.transactions.forEach(t => {
-      if ((selectedMonth === 'all' || t.date.startsWith(selectedMonth)) && t.allocationFund) {
-        if (t.type === 'expense') {
-          fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
-        } else if (t.type === 'income') {
-          fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) - t.amount;
-        }
+      if (t.type === 'expense' && (selectedMonth === 'all' || t.date.startsWith(selectedMonth)) && t.allocationFund) {
+        fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
       }
     });
 
