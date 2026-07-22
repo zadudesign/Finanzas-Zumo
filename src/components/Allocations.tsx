@@ -186,7 +186,7 @@ export function Allocations() {
       await addTransaction({
         type: 'expense',
         amount: amountNum,
-        category: '',
+        category: 'Transferencias',
         description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
         date: transactionDate,
         allocationFund: transferOrigin
@@ -196,7 +196,7 @@ export function Allocations() {
       await addTransaction({
         type: 'expense',
         amount: -amountNum,
-        category: 'Transferencias',
+        category: '',
         description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
         date: transactionDate,
         allocationFund: transferDestination
