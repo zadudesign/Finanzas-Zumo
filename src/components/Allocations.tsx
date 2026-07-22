@@ -182,17 +182,17 @@ export function Allocations() {
     }
 
     try {
-      // 1. Transaction to subtract from Origin
+      // 1. Transaction to subtract from Origin (positive value in database representing outflow)
       await addTransaction({
         type: 'expense',
         amount: amountNum,
-        category: 'Transferencias',
+        category: '',
         description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
         date: transactionDate,
         allocationFund: transferOrigin
       });
 
-      // 2. Transaction to add to Destination (negative expense)
+      // 2. Transaction to add to Destination (negative value in database representing inflow)
       await addTransaction({
         type: 'expense',
         amount: -amountNum,
