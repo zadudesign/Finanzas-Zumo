@@ -89,8 +89,12 @@ export function Allocations() {
 
     const fundExpenses: Record<string, number> = {};
     data.transactions.forEach(t => {
-      if (t.type === 'expense' && t.allocationFund && (selectedMonth === 'all' || t.date.startsWith(selectedMonth))) {
-        fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
+      if (t.allocationFund && (selectedMonth === 'all' || t.date.startsWith(selectedMonth))) {
+        if (t.type === 'expense') {
+          fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
+        } else if (t.type === 'income') {
+          fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) - t.amount;
+        }
       }
     });
 
@@ -192,10 +196,10 @@ export function Allocations() {
         allocationFund: transferOrigin
       });
 
-      // 2. Transaction to add to Destination (negative value in database representing inflow)
+      // 2. Transaction to add to Destination (positive income representing inflow to destination)
       await addTransaction({
-        type: 'expense',
-        amount: -amountNum,
+        type: 'income',
+        amount: amountNum,
         category: '',
         description: `[Transferencia] De ${transferOrigin} a ${transferDestination}`,
         date: transactionDate,
