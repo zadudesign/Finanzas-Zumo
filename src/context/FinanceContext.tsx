@@ -55,6 +55,16 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
         };
       }
 
+      if (migratedCategories && Array.isArray(migratedCategories.expense)) {
+        const hasTransferencias = migratedCategories.expense.some((c: any) => c.name === 'Transferencias');
+        if (!hasTransferencias) {
+          migratedCategories.expense = [
+            ...migratedCategories.expense,
+            { name: 'Transferencias', icon: 'ArrowLeftRight' }
+          ];
+        }
+      }
+
       return {
         ...mockInitialData,
         ...parsed,
@@ -134,6 +144,11 @@ export const FinanceProvider: React.FC<{children: React.ReactNode}> = ({ childre
                  income: cats.filter(c => c.type === 'income').map(c => ({ name: c.name, icon: c.icon })),
                  expense: cats.filter(c => c.type === 'expense').map(c => ({ name: c.name, icon: c.icon }))
                };
+
+               const hasTransferencias = cloudCategories.expense.some(c => c.name === 'Transferencias');
+               if (!hasTransferencias) {
+                 cloudCategories.expense.push({ name: 'Transferencias', icon: 'ArrowLeftRight' });
+               }
                
                // Buscar meta de presupuesto (amount) dentro de las categorías
                const catsWithBudgets = cats.filter(c => c.type === 'expense' && c.amount != null);

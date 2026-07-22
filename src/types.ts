@@ -66,6 +66,7 @@ export const DEFAULT_CATEGORIES: FinanceData['categories'] = {
     { name: 'Salud', icon: 'Activity' },
     { name: 'Entretenimiento', icon: 'Play' },
     { name: 'Educación', icon: 'Book' },
+    { name: 'Transferencias', icon: 'ArrowLeftRight' },
     { name: 'Otros', icon: 'CreditCard' }
   ]
 };
