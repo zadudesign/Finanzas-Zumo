@@ -39,22 +39,25 @@ export function Transactions() {
     setEditFund(t.allocationFund || '');
     setEditDate(t.date || '');
     setEditDescription(t.description || '');
-    setEditAmount(t.amount?.toString() || '0');
+    setEditAmount(Math.abs(t.amount || 0).toString());
   };
 
   const handleSave = async (id: string) => {
+    const originalTx = data.transactions.find(tx => tx.id === id);
     const numAmount = parseFloat(editAmount);
     if (isNaN(numAmount) || numAmount <= 0) {
       alert("Por favor, ingresa un monto válido mayor a 0.");
       return;
     }
 
+    const finalAmount = originalTx && originalTx.amount < 0 ? -Math.abs(numAmount) : Math.abs(numAmount);
+
     await updateTransaction(id, {
       category: editCategory,
-      allocationFund: editFund || undefined,
+      allocationFund: editFund,
       date: editDate,
       description: editDescription,
-      amount: numAmount
+      amount: finalAmount
     });
     setEditingId(null);
   };
@@ -426,6 +429,9 @@ export function Transactions() {
                         {[...data.categories[t.type]].sort((a, b) => a.name.localeCompare(b.name)).map(cat => (
                           <option key={cat.name} value={cat.name} className="bg-slate-800">{cat.name}</option>
                         ))}
+                        {editCategory && !data.categories[t.type].some(c => c.name === editCategory) && (
+                          <option value={editCategory} className="bg-slate-800">{editCategory}</option>
+                        )}
                       </select>
                     ) : (
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/5 text-slate-300">
