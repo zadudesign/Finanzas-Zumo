@@ -119,13 +119,29 @@ export function Dashboard() {
       }
     });
 
-    const aggregated: Record<string, { fundName: string; assignedAmount: number; consumedAmount: number; balance: number; sources: string[] }> = {};
+    const aggregated: Record<string, { 
+      fundName: string; 
+      assignedAmount: number; 
+      transferredAmount: number;
+      consumedAmount: number; 
+      balance: number; 
+      sources: string[] 
+    }> = {};
 
-    // Obtener los gastos asociados a cada rubro en el mes seleccionado
+    // Obtener los gastos y transferencias asociados a cada rubro en el mes seleccionado
     const fundExpenses: Record<string, number> = {};
+    const fundTransfers: Record<string, number> = {};
+
     data.transactions.forEach(t => {
-      if (t.type === 'expense' && (selectedMonth === 'all' || t.date.startsWith(selectedMonth)) && t.allocationFund) {
-        fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
+      if ((selectedMonth === 'all' || t.date.startsWith(selectedMonth)) && t.allocationFund) {
+        const isTransfer = t.description?.includes('[Transferencia]') || t.category === 'Transferencias';
+        if (isTransfer) {
+          // Transfer outflow is +amount (leaves fund), transfer inflow is -amount (enters fund).
+          // Net budget added by transfer = -t.amount
+          fundTransfers[t.allocationFund] = (fundTransfers[t.allocationFund] || 0) - t.amount;
+        } else if (t.type === 'expense') {
+          fundExpenses[t.allocationFund] = (fundExpenses[t.allocationFund] || 0) + t.amount;
+        }
       }
     });
 
@@ -138,6 +154,7 @@ export function Dashboard() {
         aggregated[key] = {
           fundName: key,
           assignedAmount: 0,
+          transferredAmount: 0,
           consumedAmount: 0,
           balance: 0,
           sources: []
@@ -150,9 +167,30 @@ export function Dashboard() {
       }
     });
 
+    const allFundKeys = new Set([
+      ...Object.keys(aggregated),
+      ...Object.keys(fundTransfers),
+      ...Object.keys(fundExpenses)
+    ]);
+
+    allFundKeys.forEach(key => {
+      if (!aggregated[key]) {
+        aggregated[key] = {
+          fundName: key,
+          assignedAmount: 0,
+          transferredAmount: 0,
+          consumedAmount: 0,
+          balance: 0,
+          sources: ['Sin asignación de ingresos']
+        };
+      }
+    });
+
     return Object.values(aggregated).map(fund => {
+      fund.transferredAmount = fundTransfers[fund.fundName] || 0;
       fund.consumedAmount = fundExpenses[fund.fundName] || 0;
-      fund.balance = fund.assignedAmount - fund.consumedAmount;
+      const totalBudget = fund.assignedAmount + fund.transferredAmount;
+      fund.balance = totalBudget - fund.consumedAmount;
       return fund;
     }).sort((a, b) => a.fundName.localeCompare(b.fundName));
   }, [data.allocations, data.transactions, selectedMonth]);
@@ -277,6 +315,25 @@ export function Dashboard() {
                       <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-none">Asignado</p>
                       <p className="text-sm font-bold text-slate-300 font-mono leading-none">{formatCurrency(a.assignedAmount)}</p>
                     </div>
+                    <div className="flex justify-between items-end">
+                      <p className="text-[10px] text-indigo-300 uppercase tracking-widest leading-none">Transferencias</p>
+                      <p className={cn(
+                        "text-sm font-bold font-mono leading-none",
+                        a.transferredAmount > 0 ? "text-emerald-400" : a.transferredAmount < 0 ? "text-rose-400" : "text-slate-400"
+                      )}>
+                        {a.transferredAmount > 0 
+                          ? `+${formatCurrency(a.transferredAmount)}` 
+                          : a.transferredAmount < 0 
+                            ? `-${formatCurrency(Math.abs(a.transferredAmount))}` 
+                            : formatCurrency(0)}
+                      </p>
+                    </div>
+                    {a.transferredAmount !== 0 && (
+                      <div className="flex justify-between items-end pt-1 border-t border-white/5">
+                        <p className="text-[10px] text-slate-300 font-semibold uppercase tracking-widest leading-none">Presupuesto Total</p>
+                        <p className="text-sm font-bold text-white font-mono leading-none">{formatCurrency(a.assignedAmount + a.transferredAmount)}</p>
+                      </div>
+                    )}
                     <div className="flex justify-between items-end">
                       <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-none">Consumido</p>
                       <p className="text-sm font-bold text-rose-400 font-mono leading-none">-{formatCurrency(a.consumedAmount)}</p>
